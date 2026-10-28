@@ -1,0 +1,1491 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Beleşify</title>
+<meta name="theme-color" content="#120f17">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+<style>
+/* Layout: three-pane music app (sidebar, library view, queue drawer) over a fixed player bar; one committed dark look */
+:root {
+  --bg: #000000;
+  --panel: #121212;
+  --card: #181818;
+  --raise: #1f1f1f;
+  --hover: #2a2a2a;
+  --line: #2c2c2c;
+  --fg: #ffffff;
+  --mute: #b3b3b3;
+  --accent: #1ed760;
+  --accent-ink: #000000;
+  --danger: #f15e6c;
+  --display: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r: 10px;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+svg.i { width: 20px; height: 20px; fill: currentColor; flex: none; }
+
+.app { height: 100%; display: grid; grid-template-columns: 248px minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; padding: 8px max(8px, env(safe-area-inset-right, 0px)) 0 max(8px, env(safe-area-inset-left, 0px)); }
+
+/* Sidebar */
+.side { grid-row: 1; background: var(--panel); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; padding: 18px 12px 12px; gap: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; font-family: var(--display); font-weight: 900; font-size: 23px; letter-spacing: -0.04em; }
+.brand-mark { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; color: var(--accent-ink); }
+.brand-mark svg { width: 18px; height: 18px; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav button { display: flex; align-items: center; gap: 14px; padding: 9px 10px; border-radius: 8px; color: var(--mute); font-weight: 600; font-size: 15px; text-align: left; }
+.nav button:hover { color: var(--fg); background: var(--raise); }
+.nav button.on { color: var(--fg); background: var(--raise); }
+.nav button.on svg { color: var(--accent); }
+.side-head { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 10px; color: var(--mute); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.icon-btn { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--mute); }
+.icon-btn:hover { color: var(--fg); background: var(--hover); }
+.icon-btn.on { color: var(--accent); }
+.pl-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; }
+.pl-list button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; text-align: left; }
+.pl-list button:hover, .pl-list button.on { background: var(--raise); }
+.pl-list img, .pl-list .pl-ico { width: 40px; height: 40px; border-radius: 6px; flex: none; object-fit: cover; }
+.pl-ico { display: grid; place-items: center; background: linear-gradient(135deg, #450af5, #8e8ee5); }
+.pl-meta { min-width: 0; }
+.pl-meta b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-meta span { color: var(--mute); font-size: 12px; }
+.add-files { display: flex; align-items: center; gap: 10px; justify-content: center; padding: 11px; border-radius: 999px; border: 1px solid var(--line); font-weight: 600; cursor: pointer; }
+.add-files:hover { border-color: var(--fg); }
+.add-files input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.add-files:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Main view */
+.main { grid-row: 1; background: var(--panel); border-radius: var(--r); overflow-y: auto; min-height: 0; position: relative; }
+.view { padding-block: 22px 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 30px; }
+@media (min-width: 760px) { .view { padding-left: 28px; padding-right: 28px; } }
+.view.tinted { background: linear-gradient(180deg, var(--tint, #3a2a4d) 0, var(--panel) 340px); }
+h1, h2 { font-family: var(--display); letter-spacing: -0.04em; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 4.2vw, 44px); font-weight: 900; line-height: 1.05; }
+h2 { font-size: 22px; font-weight: 800; }
+.sec { display: flex; flex-direction: column; gap: 14px; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sec-head p { margin: 0; color: var(--mute); font-size: 13px; }
+.lede { margin: 6px 0 0; color: var(--mute); max-width: 60ch; line-height: 1.5; }
+
+.quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 8px; }
+.qtile { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.07); border-radius: 6px; overflow: hidden; text-align: left; font-weight: 700; position: relative; padding-right: 52px; min-height: 56px; }
+.qtile:hover { background: rgba(255,255,255,0.13); }
+.qtile img, .qtile .pl-ico { width: 56px; height: 56px; flex: none; border-radius: 0; object-fit: cover; }
+.qtile span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qtile .fab { position: absolute; right: 8px; width: 36px; height: 36px; opacity: 0; transform: translateY(2px); }
+.qtile:hover .fab, .qtile:focus-visible .fab { opacity: 1; transform: none; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 168px), 1fr)); gap: 16px; }
+.card { background: var(--card); border-radius: 10px; padding: 10px; text-align: left; display: flex; flex-direction: column; gap: 10px; position: relative; }
+.card:hover { background: var(--raise); }
+.card-art { position: relative; }
+.card-art img { width: 100%; aspect-ratio: 1; border-radius: 8px; display: block; box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+.card .fab { position: absolute; right: 8px; bottom: 8px; opacity: 0; transform: translateY(6px); transition: opacity .15s, transform .15s; }
+.card:hover .fab, .card:focus-within .fab, .card.playing .fab { opacity: 1; transform: none; }
+.card b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card small { color: var(--mute); font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fab { width: 46px; height: 46px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+.fab:hover { transform: scale(1.05); filter: brightness(1.05); }
+.fab svg { width: 22px; height: 22px; }
+
+.genres { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 180px), 1fr)); gap: 14px; }
+.genre { aspect-ratio: 16 / 10; border-radius: 10px; padding: 14px; text-align: left; font-family: var(--display); font-size: 20px; font-weight: 800; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+.genre small { font-family: var(--body); font-size: 12px; font-weight: 600; opacity: .8; }
+.genre img { position: absolute; width: 44%; right: -6%; bottom: -6%; transform: rotate(22deg); border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+
+.note { display: flex; gap: 14px; align-items: flex-start; background: var(--raise); border-radius: 10px; padding: 16px; line-height: 1.5; }
+.note p { margin: 0; color: var(--mute); max-width: 70ch; }
+.note b { color: var(--fg); }
+
+/* Track list */
+.tl { display: flex; flex-direction: column; }
+.tl-head, .row { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(0, 0.55fr) 36px 52px 36px; align-items: center; gap: 12px; padding: 0 10px; }
+.tl-head { color: var(--mute); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; }
+.row { min-height: 56px; border-radius: 6px; cursor: default; }
+.row:hover, .row.sel { background: var(--hover); }
+.row .num { color: var(--mute); text-align: center; font-variant-numeric: tabular-nums; position: relative; }
+.row .num button { display: none; position: absolute; inset: -8px; place-items: center; color: var(--fg); }
+.row:hover .num span, .row:focus-within .num span { visibility: hidden; }
+.row:hover .num button, .row:focus-within .num button { display: grid; }
+.row .t { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.row .t img { width: 40px; height: 40px; border-radius: 4px; flex: none; }
+.row .t div { min-width: 0; }
+.row .t b { display: block; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .t small, .row .g { color: var(--mute); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.row.cur .t b, .row.cur .num span { color: var(--accent); }
+.row .d { color: var(--mute); font-variant-numeric: tabular-nums; text-align: right; }
+.row .like { opacity: 0; }
+.row:hover .like, .row .like.on, .row:focus-within .like { opacity: 1; }
+.row .more { opacity: 0; }
+.row:hover .more, .row:focus-within .more { opacity: 1; }
+.tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink); background: var(--mute); border-radius: 3px; padding: 1px 4px; margin-right: 6px; vertical-align: 1px; }
+.eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 14px; }
+.eq i { width: 3px; background: var(--accent); animation: eq 0.9s ease-in-out infinite; height: 40%; }
+.eq i:nth-child(2) { animation-delay: -.3s; } .eq i:nth-child(3) { animation-delay: -.6s; }
+.paused .eq i { animation-play-state: paused; }
+@keyframes eq { 0%,100% { height: 25%; } 50% { height: 100%; } }
+.empty { color: var(--mute); padding: 26px 10px; text-align: center; line-height: 1.6; border: 1px dashed var(--line); border-radius: 10px; }
+.empty b { color: var(--fg); display: block; font-size: 16px; margin-bottom: 4px; }
+
+/* Playlist header */
+.hero { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
+.hero-art { width: clamp(140px, 22vw, 220px); aspect-ratio: 1; border-radius: 8px; box-shadow: 0 14px 40px rgba(0,0,0,.5); overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; flex: none; max-width: 100%; }
+.hero-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hero-art.one { grid-template-columns: 1fr; }
+.hero-art .pl-ico { width: 100%; height: 100%; border-radius: 0; }
+.hero-art .pl-ico svg { width: 40%; height: 40%; }
+.hero-txt { min-width: 0; flex: 1 1 260px; display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mute); }
+.hero-txt h1 { font-size: clamp(32px, 6vw, 80px); overflow-wrap: anywhere; }
+.hero-txt p { margin: 0; color: var(--mute); }
+.actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.actions .fab { width: 56px; height: 56px; }
+.actions .fab svg { width: 26px; height: 26px; }
+.ghost { border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font-weight: 600; color: var(--fg); }
+.ghost:hover { border-color: var(--fg); }
+.ghost.danger { color: var(--danger); }
+
+/* Search */
+.search-box { display: flex; align-items: center; gap: 10px; background: var(--raise); border-radius: 999px; padding: 0 16px; border: 1px solid transparent; max-width: 520px; }
+.search-box:focus-within { border-color: var(--fg); }
+.search-box input { flex: 1; min-width: 0; background: none; border: 0; outline: none; height: 48px; font-size: 16px; }
+.search-box input::placeholder { color: var(--mute); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { padding: 6px 14px; border-radius: 999px; background: var(--raise); font-weight: 600; font-size: 13px; }
+.chip:hover { background: var(--hover); }
+.chip.on { background: var(--fg); color: var(--bg); }
+
+.drop { border: 2px dashed var(--line); border-radius: 12px; padding: 22px; text-align: center; color: var(--mute); line-height: 1.6; }
+.drop.over { border-color: var(--accent); color: var(--fg); background: rgba(30,215,96,0.08); }
+.drop label { color: var(--accent); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Queue drawer */
+.queue { grid-row: 1; width: 320px; background: var(--panel); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; }
+.queue-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 10px 8px 18px; }
+.queue-head h2 { font-size: 18px; }
+.queue-body { overflow-y: auto; padding: 4px 8px 16px; display: flex; flex-direction: column; gap: 14px; }
+.queue-body h3 { margin: 0 0 4px; padding: 0 8px; font-size: 13px; color: var(--mute); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+.queue-body h3 button { color: var(--mute); font-size: 12px; font-weight: 600; }
+.queue-body h3 button:hover { color: var(--fg); }
+.qrow { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; }
+.qrow:hover { background: var(--hover); }
+.qrow img { width: 40px; height: 40px; border-radius: 4px; flex: none; }
+.qrow .qt { min-width: 0; flex: 1; cursor: pointer; }
+.qrow b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qrow.cur b { color: var(--accent); }
+.qrow small { color: var(--mute); font-size: 12px; }
+.qrow .icon-btn { opacity: 0; width: 28px; height: 28px; }
+.qrow:hover .icon-btn, .qrow:focus-within .icon-btn { opacity: 1; }
+
+/* Player bar */
+.player { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); align-items: center; gap: 16px; padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px)); }
+.np { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.np img { width: 56px; height: 56px; border-radius: 6px; flex: none; }
+.np .np-t { min-width: 0; }
+.np b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np small { color: var(--mute); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.ctrl { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.btns { display: flex; align-items: center; gap: 14px; }
+.btns .icon-btn { position: relative; }
+.btns .icon-btn.on::after { content: ""; position: absolute; bottom: 1px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent); }
+.rep1 { position: absolute; top: 3px; right: 3px; font-size: 9px; font-weight: 800; color: var(--accent); }
+.play { width: 40px; height: 40px; border-radius: 50%; background: var(--fg); color: var(--bg); display: grid; place-items: center; }
+.play:hover { transform: scale(1.05); }
+.seek { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 600px; color: var(--mute); font-size: 12px; font-variant-numeric: tabular-nums; }
+.seek span { width: 38px; text-align: center; flex: none; }
+.right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.vol { width: 110px; }
+input[type=range] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--fg) var(--p, 0%), #4a4156 var(--p, 0%)); cursor: pointer; flex: 1; min-width: 0; margin: 0; }
+input[type=range]:hover { background: linear-gradient(to right, var(--accent) var(--p, 0%), #4a4156 var(--p, 0%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--fg); opacity: 0; }
+input[type=range]:hover::-webkit-slider-thumb, input[type=range]:focus-visible::-webkit-slider-thumb { opacity: 1; }
+input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: var(--fg); }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.mnav { display: none; }
+
+/* Popover menu, modal, toast */
+.menu { position: fixed; z-index: 50; background: var(--raise); border-radius: 8px; padding: 4px; min-width: 210px; max-width: calc(100vw - 24px); box-shadow: 0 16px 40px rgba(0,0,0,.6); display: flex; flex-direction: column; max-height: 70vh; overflow-y: auto; }
+.menu button { text-align: left; padding: 10px 12px; border-radius: 5px; display: flex; gap: 10px; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu button:hover, .menu button:focus-visible { background: var(--hover); }
+.menu a.menu-link { text-align: left; padding: 10px 12px; border-radius: 5px; display: flex; gap: 10px; align-items: center; color: var(--fg); text-decoration: none; }
+.menu a.menu-link:hover { background: var(--hover); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.menu .lbl { padding: 8px 12px 4px; color: var(--mute); font-size: 12px; font-weight: 700; }
+.scrim { position: fixed; inset: 0; background: rgba(8,6,12,.7); z-index: 60; display: grid; place-items: center; padding: 16px; }
+.modal { background: var(--raise); border-radius: 12px; padding: 22px; width: min(420px, 100%); display: flex; flex-direction: column; gap: 16px; }
+.modal h2 { font-size: 20px; }
+.modal p { margin: 0; color: var(--mute); line-height: 1.5; }
+.modal input { background: var(--hover); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; outline: none; }
+.modal input:focus { border-color: var(--fg); }
+.modal .row-btns { display: flex; justify-content: flex-end; gap: 10px; }
+.solid { background: var(--fg); color: var(--bg); border-radius: 999px; padding: 9px 18px; font-weight: 700; }
+.solid.danger { background: var(--danger); color: var(--accent-ink); }
+.toast { position: fixed; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(10px); background: #3d6df2; color: #fff; padding: 9px 16px; border-radius: 8px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 70; max-width: calc(100vw - 32px); text-align: center; }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+
+@media (max-width: 1100px) { .tl-head, .row { grid-template-columns: 30px minmax(0, 1fr) 36px 48px 36px; } .tl-head .g, .row .g { display: none; } }
+@media (max-width: 1000px) { .queue { position: fixed; z-index: 40; right: max(8px, env(safe-area-inset-right, 0px)); top: calc(8px + env(safe-area-inset-top, 0px)); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 20px 60px rgba(0,0,0,.6); max-width: calc(100vw - 16px); } }
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto; gap: 0; padding: 0; }
+  .side { display: none; }
+  .main { border-radius: 0; }
+  .player { grid-template-columns: minmax(0, 1fr) auto; grid-row: 2; gap: 8px; margin: 0 8px; margin-left: max(8px, env(safe-area-inset-left, 0px)); margin-right: max(8px, env(safe-area-inset-right, 0px)); padding: 8px; background: var(--raise); border-radius: 8px; position: relative; }
+  .np img { width: 42px; height: 42px; }
+  .ctrl { order: 2; }
+  .ctrl .seek { position: absolute; left: 8px; right: 8px; bottom: 0; max-width: none; }
+  .ctrl .seek span { display: none; }
+  .ctrl .seek input { height: 2px; }
+  .btns { gap: 4px; }
+  .btns .shuf, .btns .rep { display: none; }
+  .right { display: none; }
+  .mnav { display: flex; grid-row: 3; justify-content: space-around; padding: 6px max(16px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: linear-gradient(180deg, transparent, var(--bg) 30%); }
+  .mnav button { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--mute); padding: 6px 10px; font-weight: 600; }
+  .mnav button.on { color: var(--fg); }
+  .player { padding-bottom: 10px; }
+  .queue { left: 8px; right: 8px; width: auto; bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
+  .tl-head { display: none; }
+  .tl-head, .row { grid-template-columns: minmax(0, 1fr) 36px 36px; padding: 0 4px; }
+  .row .num, .row .d { display: none; }
+  .row .like { opacity: 1; }
+  .row .more { opacity: 1; }
+  .qtile .fab { display: none; }
+  .qtile { padding-right: 10px; }
+  .card .fab { opacity: 1; transform: none; width: 40px; height: 40px; }
+  .toast { bottom: calc(140px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }
+/* YouTube player: kept visible, as YouTube's terms require */
+.vidbox { position: fixed; z-index: 30; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); width: min(360px, calc(100vw - 32px)); background: #000; border-radius: 10px; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.6); }
+.vidbox .vid { aspect-ratio: 16 / 9; min-height: 200px; }
+.vidbox iframe { width: 100%; height: 100%; display: block; border: 0; }
+@media (min-width: 1001px) { .queue-open .vidbox { right: 344px; } }
+@media (max-width: 760px) { .vidbox { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); width: auto; } }
+.video-on .view { padding-bottom: 240px; }
+#ytProbe { position: fixed; left: -10000px; top: 0; width: 200px; height: 200px; }
+.ytadd { display: flex; gap: 10px; flex-wrap: wrap; max-width: 680px; }
+.ytadd input { flex: 1 1 260px; min-width: 0; background: var(--raise); border: 1px solid transparent; border-radius: 999px; padding: 0 18px; height: 48px; outline: none; font-size: 15px; }
+.ytadd input:focus { border-color: var(--fg); }
+.ytadd .solid { height: 48px; padding: 0 22px; }
+.yres { display: flex; flex-direction: column; gap: 4px; }
+.yrow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 6px; }
+.yrow:hover { background: var(--hover); }
+.yrow img { width: 96px; height: 54px; border-radius: 4px; flex: none; object-fit: cover; }
+.yrow .yt-t { min-width: 0; flex: 1; }
+.yrow b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yrow small { color: var(--mute); font-size: 13px; }
+.note a { color: var(--accent); }
+img { object-fit: cover; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3 2.5 11h2.6v9.5h5.3v-6h3.2v6h5.3V11h2.6z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M10.5 3a7.5 7.5 0 0 1 5.96 12.05l4.74 4.74-1.41 1.41-4.74-4.74A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></symbol>
+  <symbol id="i-lib" viewBox="0 0 24 24"><path d="M4 3h2v18H4zm5 0h2v18H9zm5.2.6 1.9-.6 5.2 17.2-1.9.6z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a.6.6 0 0 0 .9.5l12.2-7.5a.6.6 0 0 0 0-1L7.9 4a.6.6 0 0 0-.9.5Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 5.2v13.6a.5.5 0 0 0 .8.4l9.2-6.8a.5.5 0 0 0 0-.8L5.8 4.8a.5.5 0 0 0-.8.4ZM17 5h2v14h-2z"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M19 5.2v13.6a.5.5 0 0 1-.8.4L9 12.4a.5.5 0 0 1 0-.8l9.2-6.8a.5.5 0 0 1 .8.4ZM5 5h2v14H5z"/></symbol>
+  <symbol id="i-shuf" viewBox="0 0 24 24"><path d="M17 3l4 4-4 4V8h-2.1l-8 10H3v-2h3l8-10H17zM3 6h3.9l2.6 3.2-1.3 1.6L6 8H3zm11.9 8.4 0 0 1.1 1.6H17v-3l4 4-4 4v-3h-2l-2.4-3 1.3-1.6z"/></symbol>
+  <symbol id="i-rep" viewBox="0 0 24 24"><path d="M7 7h11v3l4-4-4-4v3H5v6h2zm10 10H6v-3l-4 4 4 4v-3h13v-6h-2z"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.3 10.6 19C5.4 14.4 2 11.3 2 7.6 2 4.5 4.4 2.2 7.5 2.2c1.7 0 3.4.8 4.5 2.1 1.1-1.3 2.8-2.1 4.5-2.1 3.1 0 5.5 2.3 5.5 5.4 0 3.7-3.4 6.8-8.6 11.4z"/></symbol>
+  <symbol id="i-heart-o" viewBox="0 0 24 24"><path d="M16.5 2.2c-1.7 0-3.4.8-4.5 2.1-1.1-1.3-2.8-2.1-4.5-2.1C4.4 2.2 2 4.5 2 7.6c0 3.7 3.4 6.8 8.6 11.4l1.4 1.3 1.4-1.3c5.2-4.6 8.6-7.7 8.6-11.4 0-3.1-2.4-5.4-5.5-5.4Zm-4.4 15.3-.1.1-.1-.1C7.1 13.2 4 10.4 4 7.6c0-2 1.5-3.4 3.5-3.4 1.5 0 3 1 3.6 2.4h1.9c.5-1.4 2-2.4 3.5-2.4 2 0 3.5 1.5 3.5 3.4 0 2.8-3.1 5.6-7.9 9.9Z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M5 10.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6Zm7 0a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6Zm7 0a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6Z"/></symbol>
+  <symbol id="i-queue" viewBox="0 0 24 24"><path d="M3 5h13v2H3zm0 6h13v2H3zm0 6h8v2H3zm14-3.5V21l5-3.7z"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4ZM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6Z"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3zm13.6.1 1.4-1.4 2.3 2.3 2.3-2.3 1.4 1.4-2.3 2.3 2.3 2.3-1.4 1.4-2.3-2.3-2.3 2.3-1.4-1.4 2.3-2.3z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4z"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M9 3v11.3A4 4 0 1 0 11 18V8h6V3z"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M11 16V7.8L7.4 11.4 6 10l6-6 6 6-1.4 1.4L13 7.8V16zm-7 2h16v2H4z"/></symbol>
+  <symbol id="i-yt" viewBox="0 0 24 24"><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.5 2.5 0 0 0-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8ZM10 15V9l5.2 3z"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 10h2v4H3zm4-4h2v12H7zm4-3h2v18h-2zm4 5h2v8h-2zm4 2h2v4h-2z"/></symbol>
+</svg>
+
+<div class="app" id="app">
+  <aside class="side" aria-label="Kenar çubuğu">
+    <div class="brand"><span class="brand-mark"><svg class="i"><use href="#i-wave"/></svg></span>Beleşify</div>
+    <nav class="nav" aria-label="Ana gezinme">
+      <button data-go="home"><svg class="i"><use href="#i-home"/></svg>Ana sayfa</button>
+      <button data-go="search"><svg class="i"><use href="#i-search"/></svg>Ara</button>
+      <button data-go="library"><svg class="i"><use href="#i-lib"/></svg>Kitaplığın</button>
+      <button data-go="yt"><svg class="i"><use href="#i-yt"/></svg>YouTube</button>
+    </nav>
+    <div class="side-head"><span>Çalma listeleri</span><button class="icon-btn" data-act="new-pl" title="Yeni çalma listesi" aria-label="Yeni çalma listesi"><svg class="i"><use href="#i-plus"/></svg></button></div>
+    <ul class="pl-list" id="plList"></ul>
+    <button class="add-files" id="installBtn" hidden data-act="install"><svg class="i"><use href="#i-upload"/></svg>Uygulamayı kur</button>
+    <label class="add-files"><svg class="i"><use href="#i-upload"/></svg>Müzik dosyası ekle<input type="file" id="fileIn" accept="audio/*" multiple></label>
+  </aside>
+
+  <main class="main" id="main" tabindex="-1"></main>
+
+  <aside class="queue" id="queue" hidden aria-label="Çalma sırası">
+    <div class="queue-head"><h2>Sıradakiler</h2><button class="icon-btn" data-act="toggle-queue" aria-label="Sırayı kapat"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="queue-body" id="queueBody"></div>
+  </aside>
+
+  <footer class="player" id="player">
+    <div class="np" id="np"></div>
+    <div class="ctrl">
+      <div class="btns">
+        <button class="icon-btn shuf" id="shufBtn" data-act="shuffle" title="Karıştır" aria-label="Karıştır"><svg class="i"><use href="#i-shuf"/></svg></button>
+        <button class="icon-btn" data-act="prev" title="Önceki" aria-label="Önceki"><svg class="i"><use href="#i-prev"/></svg></button>
+        <button class="play" id="playBtn" data-act="toggle" title="Çal" aria-label="Çal"><svg class="i"><use href="#i-play"/></svg></button>
+        <button class="icon-btn" data-act="next" title="Sonraki" aria-label="Sonraki"><svg class="i"><use href="#i-next"/></svg></button>
+        <button class="icon-btn rep" id="repBtn" data-act="repeat" title="Tekrarla" aria-label="Tekrarla"><svg class="i"><use href="#i-rep"/></svg></button>
+      </div>
+      <div class="seek"><span id="tCur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Şarkı konumu"><span id="tDur">0:00</span></div>
+    </div>
+    <div class="right">
+      <button class="icon-btn" id="queueBtn" data-act="toggle-queue" title="Sıra" aria-label="Sırayı göster"><svg class="i"><use href="#i-queue"/></svg></button>
+      <button class="icon-btn" id="muteBtn" data-act="mute" title="Sessiz" aria-label="Sessiz"><svg class="i"><use href="#i-vol"/></svg></button>
+      <input type="range" class="vol" id="vol" min="0" max="100" value="80" aria-label="Ses düzeyi">
+    </div>
+  </footer>
+
+  <nav class="mnav" aria-label="Mobil gezinme">
+    <button data-go="home"><svg class="i"><use href="#i-home"/></svg>Ana sayfa</button>
+    <button data-go="search"><svg class="i"><use href="#i-search"/></svg>Ara</button>
+    <button data-go="library"><svg class="i"><use href="#i-lib"/></svg>Kitaplık</button>
+    <button data-go="yt"><svg class="i"><use href="#i-yt"/></svg>YouTube</button>
+    <button data-act="toggle-queue"><svg class="i"><use href="#i-queue"/></svg>Sıra</button>
+  </nav>
+</div>
+<div class="menu" id="menu" hidden role="menu"></div>
+<div class="scrim" id="scrim" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<audio id="audio" preload="auto"></audio>
+<div class="vidbox" id="vidbox" hidden><div class="vid"><div id="ytFrame"></div></div></div>
+<div id="ytProbe" aria-hidden="true"></div>
+
+<script>
+"use strict";
+/* ============ Synth: every Beleşify Stüdyo track is composed and rendered in the browser ============ */
+const mulberry32 = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+const SCALES = {
+  minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], major: [0, 2, 4, 5, 7, 9, 11],
+  lydian: [0, 2, 4, 6, 7, 9, 11], hicaz: [0, 1, 4, 5, 7, 8, 10]
+};
+const deg = (sc, root, d) => { const n = sc.length, o = Math.floor(d / n), i = ((d % n) + n) % n; return root + sc[i] + 12 * o; };
+
+const STYLES = {
+  lofi:  { drums: "lofi", bass: "long", pad: "keys", arp: null, lead: "soft", swing: 0.16, lofi: true, chord: 4, rev: 0.3 },
+  synth: { drums: "synth", bass: "root8", pad: "saw", arp: "up16", lead: "saw", swing: 0, chord: 3, rev: 0.4 },
+  chip:  { drums: "chip", bass: "chip", pad: null, arp: "chip", lead: "square", swing: 0, chord: 3, rev: 0.12 },
+  ambient: { drums: null, bass: "long", pad: "wide", arp: null, lead: "bell", swing: 0, chord: 4, rev: 0.7 },
+  house: { drums: "four", bass: "offbeat", pad: "stab", arp: null, lead: "pluck", swing: 0.05, chord: 4, rev: 0.3 },
+  maqam: { drums: "maqsum", bass: "root8", pad: "saw", arp: null, lead: "pluck", swing: 0, chord: 3, rev: 0.35 }
+};
+
+const STUDIO = [
+  { id: "g1", title: "Kadıköy Gecesi", artist: "Moda Kayıtları", genre: "Lo-fi", style: "lofi", bpm: 78, root: 57, scale: "dorian", prog: [0, 3, 6, 4], seed: 101 },
+  { id: "g2", title: "Boğaz Neonu", artist: "Neon Vapur", genre: "Synthwave", style: "synth", bpm: 100, root: 52, scale: "minor", prog: [0, 5, 2, 6], seed: 202 },
+  { id: "g3", title: "Hicaz Dalgası", artist: "Makam Modüler", genre: "Makam Elektronik", style: "maqam", bpm: 108, root: 50, scale: "hicaz", prog: [0, 3, 0, 6], seed: 303 },
+  { id: "g4", title: "Ege Sabahı", artist: "Ege Kıyısı", genre: "Ambient", style: "ambient", bpm: 70, root: 50, scale: "major", prog: [0, 3, 5, 4], seed: 404 },
+  { id: "g5", title: "Galata 1987", artist: "Pixel Simit", genre: "Chiptune", style: "chip", bpm: 140, root: 48, scale: "major", prog: [0, 5, 3, 4], seed: 505 },
+  { id: "g6", title: "Metrobüs", artist: "Gece Hattı", genre: "House", style: "house", bpm: 122, root: 53, scale: "minor", prog: [0, 5, 3, 4], seed: 606 },
+  { id: "g7", title: "Çay Molası", artist: "Moda Kayıtları", genre: "Lo-fi", style: "lofi", bpm: 84, root: 53, scale: "major", prog: [1, 4, 0, 5], seed: 707 },
+  { id: "g8", title: "Kapadokya Balonları", artist: "Ege Kıyısı", genre: "Ambient", style: "ambient", bpm: 66, root: 53, scale: "lydian", prog: [0, 1, 0, 4], seed: 808 },
+  { id: "g9", title: "Sonsuz Döngü", artist: "Neon Vapur", genre: "Synthwave", style: "synth", bpm: 92, root: 55, scale: "minor", prog: [0, 3, 5, 4], seed: 909 },
+  { id: "g10", title: "Yağmurlu Beyoğlu", artist: "Moda Kayıtları", genre: "Lo-fi", style: "lofi", bpm: 72, root: 50, scale: "minor", prog: [0, 5, 2, 6], seed: 1010 },
+  { id: "g11", title: "Sahil Yolu", artist: "Gece Hattı", genre: "House", style: "house", bpm: 118, root: 55, scale: "dorian", prog: [0, 3, 0, 4], seed: 1111 },
+  { id: "g12", title: "Sultanahmet Akşamı", artist: "Makam Modüler", genre: "Makam Elektronik", style: "maqam", bpm: 96, root: 52, scale: "hicaz", prog: [0, 6, 3, 0], seed: 1212 }
+];
+
+function arrange(def) {
+  const st = STYLES[def.style];
+  const m = def.bpm >= 115 ? 2 : 1;
+  const drumsL = st.drums ? "d" : "";
+  const secs = [
+    [4, "p" + (def.style === "chip" ? "a" : "")],
+    [8 * m, "pb" + drumsL],
+    [8 * m, "pbla" + drumsL],
+    [4, "pa"],
+    [8 * m, "pbla" + drumsL],
+    [4, "p"]
+  ];
+  const bars = [];
+  secs.forEach(([n, L]) => { for (let i = 0; i < n; i++) bars.push(L); });
+  return bars;
+}
+const trackLength = def => arrange(def).length * (240 / def.bpm) + 2.5;
+
+function makeMotif(rnd) {
+  const rhythms = [[0, 3, 6, 8, 10, 12], [0, 2, 4, 7, 10], [0, 4, 6, 8, 12, 14], [0, 3, 4, 8, 11, 12, 14], [0, 6, 8, 12], [0, 2, 3, 6, 8, 12]];
+  const notes = [];
+  for (let half = 0; half < 2; half++) {
+    const r = rhythms[Math.floor(rnd() * rhythms.length)];
+    let off = [0, 2, 4][Math.floor(rnd() * 3)];
+    r.forEach((s, i) => {
+      if (i > 0) {
+        off = s % 4 === 0 ? [0, 2, 4, 7][Math.floor(rnd() * 4)] : off + [-1, 1, -2, 2, 1, -1][Math.floor(rnd() * 6)];
+        off = Math.max(-2, Math.min(9, off));
+      }
+      notes.push({ s: s + half * 16, len: (r[i + 1] ?? 16) - s, off });
+    });
+  }
+  return notes;
+}
+
+function impulseData(sr, secs, rnd) {
+  const n = Math.floor(sr * secs);
+  return [0, 1].map(() => { const d = new Float32Array(n); for (let i = 0; i < n; i++) d[i] = (rnd() * 2 - 1) * Math.pow(1 - i / n, 2.6); return d; });
+}
+function toBuffer(ctx, chans) {
+  const b = ctx.createBuffer(chans.length, chans[0].length, ctx.sampleRate);
+  chans.forEach((d, c) => b.copyToChannel(d, c));
+  return b;
+}
+
+// Every chunk gets its own linear bus (sum, optional lowpass, reverb, delay); chunks are overlap-added afterwards.
+function buildBus(ctx, st, spb, shared) {
+  const comp = ctx.createGain();
+  let tail = comp;
+  if (st.lofi) { const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3800; comp.connect(lp); tail = lp; }
+  tail.connect(ctx.destination);
+  const conv = ctx.createConvolver(); conv.normalize = false; conv.buffer = toBuffer(ctx, shared.ir);
+  const rev = ctx.createGain(); rev.gain.value = st.rev; rev.connect(conv); conv.connect(comp);
+  const dl = ctx.createDelay(2); dl.delayTime.value = spb * 0.75;
+  const fb = ctx.createGain(); fb.gain.value = 0.33;
+  const dly = ctx.createGain(); dly.connect(dl); dl.connect(fb); fb.connect(dl);
+  const dlf = ctx.createBiquadFilter(); dlf.type = "lowpass"; dlf.frequency.value = 2400; dl.connect(dlf); dlf.connect(comp);
+  return { ctx, out: comp, rev, dly, noise: toBuffer(ctx, [shared.noise]) };
+}
+
+function route(R, node, o) {
+  let out = node;
+  if (o.pan) { const p = R.ctx.createStereoPanner(); p.pan.value = o.pan; node.connect(p); out = p; }
+  out.connect(R.out);
+  if (o.rev) { const s = R.ctx.createGain(); s.gain.value = o.rev; out.connect(s); s.connect(R.rev); }
+  if (o.dly) { const s = R.ctx.createGain(); s.gain.value = o.dly; out.connect(s); s.connect(R.dly); }
+}
+
+function tone(R, o) {
+  const c = R.ctx, t = o.t, a = o.a ?? 0.005, g = c.createGain();
+  let end;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(o.vol, t + a);
+  if (o.decay) { g.gain.exponentialRampToValueAtTime(0.0001, t + a + o.decay); end = t + a + o.decay + 0.03; }
+  else { const hold = t + Math.max(a, o.dur), rel = o.rel ?? 0.08; g.gain.setValueAtTime(o.vol, hold); g.gain.exponentialRampToValueAtTime(0.0001, hold + rel); end = hold + rel + 0.03; }
+  let input = g;
+  if (o.cut) {
+    const f = c.createBiquadFilter(); f.type = "lowpass"; f.Q.value = o.q ?? 0.7;
+    f.frequency.setValueAtTime(o.cut, t);
+    if (o.cutEnd) f.frequency.exponentialRampToValueAtTime(o.cutEnd, t + (o.cutT || o.decay || o.dur));
+    f.connect(g); input = f;
+  }
+  const n = o.n || 1;
+  for (let i = 0; i < n; i++) {
+    const osc = c.createOscillator(); osc.type = o.type || "sine"; osc.frequency.value = o.f;
+    if (n > 1) osc.detune.value = (i - (n - 1) / 2) * (o.det ?? 12);
+    osc.connect(input); osc.start(t); osc.stop(end);
+  }
+  route(R, g, o);
+}
+
+function hit(R, o) {
+  const c = R.ctx, src = c.createBufferSource(); src.buffer = R.noise;
+  const f = c.createBiquadFilter(); f.type = o.ft || "highpass"; f.frequency.value = o.ff || 7000; f.Q.value = o.q || 0.7;
+  const g = c.createGain(); g.gain.setValueAtTime(o.vol, o.t); g.gain.exponentialRampToValueAtTime(0.0001, o.t + o.decay);
+  src.connect(f); f.connect(g); route(R, g, o);
+  src.start(o.t, Math.random() * 1.5, o.decay + 0.05);
+}
+
+function kick(R, t, vol, f0 = 150, f1 = 42, d = 0.38) {
+  const c = R.ctx, o = c.createOscillator(), g = c.createGain();
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + 0.13);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(R.out); o.start(t); o.stop(t + d + 0.02);
+}
+
+function drums(R, kind, t0, s16, swing, b, rnd) {
+  const at = s => t0 + s * s16 + (s % 2 ? swing * s16 : 0) + (kind === "lofi" ? (rnd() - 0.5) * 0.012 : 0);
+  const fill = b % 8 === 7;
+  if (kind === "four") {
+    [0, 4, 8, 12].forEach(s => kick(R, at(s), 0.95));
+    [4, 12].forEach(s => { hit(R, { t: at(s), vol: 0.35, ft: "bandpass", ff: 1300, q: 1.2, decay: 0.16, rev: 0.25 }); hit(R, { t: at(s) + 0.012, vol: 0.25, ft: "bandpass", ff: 1500, decay: 0.12 }); });
+    [2, 6, 10, 14].forEach(s => hit(R, { t: at(s), vol: 0.22, decay: 0.12, pan: 0.15 }));
+    for (let s = 0; s < 16; s++) if (s % 2) hit(R, { t: at(s), vol: 0.06, decay: 0.03, pan: -0.2 });
+  } else if (kind === "lofi") {
+    (b % 2 ? [0, 7, 10] : [0, 9]).forEach(s => kick(R, at(s), 0.75, 110, 45, 0.3));
+    [4, 12].forEach(s => { hit(R, { t: at(s), vol: 0.28, ft: "bandpass", ff: 1700, q: 0.8, decay: 0.2, rev: 0.2 }); tone(R, { t: at(s), f: 185, type: "triangle", vol: 0.12, decay: 0.08 }); });
+    for (let s = 0; s < 16; s += 2) hit(R, { t: at(s), vol: s % 4 ? 0.07 : 0.11, ff: 6500, decay: 0.05, pan: 0.2 });
+  } else if (kind === "synth") {
+    [0, 8].concat(b % 2 ? [10] : [6]).forEach(s => kick(R, at(s), 0.9, 140, 44, 0.4));
+    [4, 12].forEach(s => { hit(R, { t: at(s), vol: 0.4, ft: "bandpass", ff: 1600, q: 0.6, decay: 0.28, rev: 0.7 }); tone(R, { t: at(s), f: 200, type: "triangle", vol: 0.15, decay: 0.1 }); });
+    for (let s = 0; s < 16; s += 2) hit(R, { t: at(s), vol: 0.09, decay: 0.05, pan: -0.25 });
+    if (fill) [13, 14, 15].forEach(s => hit(R, { t: at(s), vol: 0.25, ft: "bandpass", ff: 1600, decay: 0.12, rev: 0.4 }));
+  } else if (kind === "chip") {
+    [0, 6, 8].forEach(s => kick(R, at(s), 0.7, 220, 50, 0.16));
+    [4, 12].forEach(s => hit(R, { t: at(s), vol: 0.3, ft: "highpass", ff: 1500, decay: 0.1 }));
+    for (let s = 0; s < 16; s += 2) hit(R, { t: at(s), vol: 0.08, ff: 9000, decay: 0.025 });
+    if (fill) [12, 13, 14, 15].forEach(s => hit(R, { t: at(s), vol: 0.22, ft: "highpass", ff: 2500, decay: 0.07 }));
+  } else if (kind === "maqsum") {
+    // Maqsum: düm tek - tek düm - tek -
+    const doum = s => { kick(R, at(s), 0.8, 120, 70, 0.45); tone(R, { t: at(s), f: 95, vol: 0.2, decay: 0.3 }); };
+    const tek = (s, v) => { tone(R, { t: at(s), f: 720, type: "sine", vol: v * 0.5, decay: 0.05, pan: 0.15 }); hit(R, { t: at(s), vol: v, ft: "highpass", ff: 3200, decay: 0.05, pan: 0.15, rev: 0.15 }); };
+    doum(0); tek(2, 0.3); tek(6, 0.3); doum(8); tek(12, 0.3);
+    [5, 10, 14, 15].forEach(s => tek(s, 0.12));
+    for (let s = 0; s < 16; s += 2) hit(R, { t: at(s), vol: 0.05, ff: 8000, decay: 0.03, pan: -0.3 });
+  }
+}
+
+
+// Offline rendering slows down sharply as node count grows, so a track is rendered in 4-bar chunks
+// (in parallel) and mixed here; reverb and delay are linear, so the overlap-add is exact.
+async function renderTrack(def) {
+  const st = { ...STYLES[def.style], style: def.style };
+  const plan = arrange(def), sc = SCALES[def.scale];
+  const SR = 32000, spb = 60 / def.bpm, barT = spb * 4, s16 = spb / 4;
+  const len = trackLength(def), n = Math.ceil(len * SR);
+  const rnd = mulberry32(def.seed), nrnd = mulberry32(def.seed ^ 0x9e37);
+  const motifs = [makeMotif(rnd), makeMotif(rnd)];
+  const shared = { ir: impulseData(SR, st.style === "ambient" ? 4 : 2.4, nrnd), noise: Float32Array.from({ length: SR * 2 }, () => nrnd() * 2 - 1) };
+  const chordOf = (cd, base) => [0, 2, 4, 6].slice(0, st.chord).map(k => deg(sc, base, cd + k));
+  const CH = 4, TAIL = st.style === "ambient" ? 6 : 3.5, jobs = [];
+  for (let b0 = 0; b0 < plan.length; b0 += CH) {
+    const b1 = Math.min(plan.length, b0 + CH);
+    const ctx = new OfflineAudioContext(2, Math.ceil(((b1 - b0) * barT + TAIL) * SR), SR);
+    const R = buildBus(ctx, st, spb, shared);
+    for (let b = b0; b < b1; b++) composeBar(R, b, 0.05 + (b - b0) * barT);
+    jobs.push(ctx.startRendering().then(buf => ({ buf, off: Math.round(b0 * barT * SR) })));
+  }
+  const L = new Float32Array(n), Rt = new Float32Array(n);
+  (await Promise.all(jobs)).forEach(({ buf, off }) => {
+    const a = buf.getChannelData(0), c = buf.getChannelData(1), m = Math.min(a.length, n - off);
+    for (let i = 0; i < m; i++) { L[off + i] += a[i]; Rt[off + i] += c[i]; }
+  });
+  if (st.lofi) { // vinyl crackle
+    let hp = 0, prev = 0;
+    for (let i = 0; i < n; i++) { const x = (nrnd() * 2 - 1) * 0.004 + (nrnd() < 0.0004 ? (nrnd() * 2 - 1) * 0.3 : 0); hp = 0.9 * (hp + x - prev); prev = x; L[i] += hp; Rt[i] += hp; }
+  }
+  let peak = 0;
+  for (let i = 0; i < n; i++) { const v = Math.max(Math.abs(L[i]), Math.abs(Rt[i])); if (v > peak) peak = v; }
+  const gain = Math.min(6, 0.6 / (peak || 1)), fadeIn = SR * 0.02, fadeOut = SR * 6;
+  for (let i = 0; i < n; i++) {
+    const env = gain * Math.min(1, i / fadeIn, (n - i) / fadeOut);
+    L[i] = Math.tanh(L[i] * env * 1.4) / 1.25; Rt[i] = Math.tanh(Rt[i] * env * 1.4) / 1.25;
+  }
+  return { sampleRate: SR, channels: [L, Rt] };
+
+  function composeBar(R, b, t0) {
+    const cd = def.prog[b % def.prog.length], L = plan[b];
+    const ch = chordOf(cd, def.root);
+    if (L.includes("p") && st.pad) {
+      if (st.pad === "saw") ch.forEach((m, i) => tone(R, { t: t0, dur: barT, f: mtof(m), type: "sawtooth", n: 2, det: 14, vol: 0.045, a: 0.08, rel: 0.4, cut: 1400, q: 1, pan: (i - 1) * 0.3, rev: 0.6 }));
+      if (st.pad === "keys") ch.forEach((m, i) => { tone(R, { t: t0 + i * 0.018, f: mtof(m), type: "triangle", vol: 0.09, decay: barT * 0.9, cut: 2200, rev: 0.5 }); tone(R, { t: t0 + barT / 2 + 0.03, f: mtof(m), type: "sine", vol: 0.05, decay: barT * 0.45, rev: 0.4 }); });
+      if (st.pad === "wide") ch.forEach((m, i) => tone(R, { t: t0, dur: barT, f: mtof(m + (i === 0 ? -12 : 0)), type: i % 2 ? "triangle" : "sine", n: 2, det: 9, vol: 0.06, a: barT * 0.35, rel: barT * 0.6, pan: (i - 1.5) * 0.35, rev: 1 }));
+      if (st.pad === "stab") [2, 6, 10, 14].forEach((s, k) => { if (k === 3 && b % 2) return; ch.forEach(m => tone(R, { t: t0 + s * s16, f: mtof(m + 12), type: "sawtooth", vol: 0.04, decay: 0.22, cut: 2600, cutEnd: 500, rev: 0.4, dly: 0.25 })); });
+    }
+    if (L.includes("b") && st.bass) {
+      const bm = deg(sc, def.root, cd) - 12, bf = mtof(bm);
+      if (st.bass === "long") tone(R, { t: t0, dur: barT * 0.92, f: bf, type: "sine", vol: 0.32, a: 0.02, rel: 0.2 }), tone(R, { t: t0, dur: barT * 0.5, f: bf * 2, type: "triangle", vol: 0.05, rel: 0.2 });
+      if (st.bass === "root8") for (let s = 0; s < 16; s += 2) tone(R, { t: t0 + s * s16, dur: s16 * 1.6, f: s === 14 && b % 2 ? mtof(bm + 12) : bf, type: "sawtooth", vol: 0.16, cut: 700, cutEnd: 220, cutT: s16 * 1.6, rel: 0.04 });
+      if (st.bass === "offbeat") [2, 6, 10, 14].forEach((s, k) => tone(R, { t: t0 + s * s16, dur: s16 * 1.5, f: k === 3 && b % 2 ? mtof(bm + 7) : bf, type: "sawtooth", vol: 0.2, cut: 900, cutEnd: 250, cutT: s16 * 1.5, q: 4, rel: 0.05 }));
+      if (st.bass === "chip") for (let s = 0; s < 16; s += 2) tone(R, { t: t0 + s * s16, dur: s16 * 1.7, f: s % 4 ? bf * 2 : bf, type: "triangle", vol: 0.28, rel: 0.02 });
+    }
+    if (L.includes("d") && st.drums) drums(R, st.drums, t0, s16, st.swing, b, rnd);
+    if (L.includes("a") && st.arp) {
+      const tones = chordOf(cd, def.root + 12).slice(0, 3);
+      tones.push(tones[0] + 12);
+      for (let s = 0; s < 16; s++) {
+        const m = st.arp === "chip" ? tones[s % 3] + (s % 6 < 3 ? 0 : 12) : tones[[0, 1, 2, 3, 2, 1][s % 6]];
+        if (st.arp === "chip") tone(R, { t: t0 + s * s16, dur: s16 * 0.6, f: mtof(m), type: "square", vol: 0.035, rel: 0.02, pan: 0.2 });
+        else tone(R, { t: t0 + s * s16, f: mtof(m), type: "sawtooth", vol: 0.04, decay: s16 * 1.4, cut: 3000, cutEnd: 600, pan: s % 2 ? 0.35 : -0.35, dly: 0.35 });
+      }
+    }
+    if (L.includes("l") && st.lead) {
+      const p = b % 4, motif = motifs[p < 2 ? 0 : 1], half = p % 2;
+      motif.filter(n => Math.floor(n.s / 16) === half).forEach(n => {
+        const t = t0 + (n.s % 16) * s16, f = mtof(deg(sc, def.root, cd + n.off + 7)), dur = n.len * s16 * 0.9;
+        if (st.lead === "soft") tone(R, { t, dur, f, type: "triangle", vol: 0.1, a: 0.02, rel: 0.25, cut: 1800, rev: 0.4 });
+        if (st.lead === "saw") tone(R, { t, dur, f, type: "sawtooth", n: 2, det: 10, vol: 0.06, a: 0.01, rel: 0.2, cut: 2600, rev: 0.4, dly: 0.3 });
+        if (st.lead === "square") tone(R, { t, dur, f, type: "square", vol: 0.05, rel: 0.03 });
+        if (st.lead === "pluck") tone(R, { t, f, type: "sawtooth", vol: 0.09, decay: 0.35, cut: 4000, cutEnd: 400, q: 2, dly: 0.35, rev: 0.25 });
+        if (st.lead === "bell" && rnd() < 0.55) { tone(R, { t, f: f * 2, vol: 0.07, decay: 2.2, rev: 0.8, dly: 0.3, pan: rnd() - 0.5 }); tone(R, { t, f: f * 2 * 2.76, vol: 0.015, decay: 0.8, rev: 0.8 }); }
+      });
+    }
+  }
+}
+
+function toWav(buf) {
+  const ch = buf.channels.length, n = buf.channels[0].length, sr = buf.sampleRate;
+  const out = new DataView(new ArrayBuffer(44 + n * ch * 2));
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); out.setUint32(4, 36 + n * ch * 2, true); w(8, "WAVE"); w(12, "fmt ");
+  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, ch, true); out.setUint32(24, sr, true);
+  out.setUint32(28, sr * ch * 2, true); out.setUint16(32, ch * 2, true); out.setUint16(34, 16, true); w(36, "data"); out.setUint32(40, n * ch * 2, true);
+  const data = buf.channels;
+  let o = 44;
+  for (let i = 0; i < n; i++) for (let c = 0; c < ch; c++) { const v = Math.max(-1, Math.min(1, data[c][i])); out.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7FFF, true); o += 2; }
+  return new Blob([out], { type: "audio/wav" });
+}
+
+/* ============ Cover art ============ */
+const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+function drawCover(seed, style, title) {
+  const S = 300, cv = document.createElement("canvas"); cv.width = cv.height = S;
+  const g = cv.getContext("2d"), r = mulberry32(seed), h1 = Math.floor(r() * 360), h2 = (h1 + 40 + r() * 80) % 360;
+  const bg = g.createLinearGradient(0, 0, S, S);
+  bg.addColorStop(0, `hsl(${h1} 62% 34%)`); bg.addColorStop(1, `hsl(${h2} 70% 16%)`);
+  g.fillStyle = bg; g.fillRect(0, 0, S, S);
+  if (style === "synth") {
+    const sun = g.createLinearGradient(0, 50, 0, 190); sun.addColorStop(0, "#ffd36b"); sun.addColorStop(1, "#ff4f8b");
+    g.fillStyle = sun; g.beginPath(); g.arc(150, 150, 82, Math.PI, 0); g.fill();
+    g.fillStyle = `hsl(${h2} 70% 16%)`; for (let i = 0; i < 6; i++) g.fillRect(60, 110 + i * 7 + i * i, 180, 2 + i);
+    g.strokeStyle = "rgba(255,120,220,.55)"; g.lineWidth = 1.5;
+    for (let i = 0; i < 7; i++) { const y = 160 + i * i * 4; g.beginPath(); g.moveTo(0, y); g.lineTo(S, y); g.stroke(); }
+    for (let i = -6; i <= 6; i++) { g.beginPath(); g.moveTo(150 + i * 14, 160); g.lineTo(150 + i * 70, S); g.stroke(); }
+  } else if (style === "lofi") {
+    g.fillStyle = "rgba(255,240,210,.9)"; g.beginPath(); g.arc(80 + r() * 140, 90 + r() * 40, 44, 0, 7); g.fill();
+    g.fillStyle = `hsl(${h1} 40% 12%)`;
+    for (let x = 0; x < S; x += 22) { const hh = 60 + r() * 110; g.fillRect(x, S - hh, 20, hh); }
+    g.fillStyle = "rgba(255,210,120,.8)";
+    for (let i = 0; i < 40; i++) g.fillRect(Math.floor(r() * 14) * 22 + 6, S - 20 - r() * 120, 4, 5);
+  } else if (style === "chip") {
+    const px = 20;
+    for (let y = 0; y < S; y += px) for (let x = 0; x < S; x += px) if (r() < 0.22) { g.fillStyle = `hsl(${[h1, h2, 50][Math.floor(r() * 3)]} 90% ${45 + r() * 25}%)`; g.fillRect(x, y, px, px); }
+  } else if (style === "ambient") {
+    for (let k = 0; k < 4; k++) {
+      g.fillStyle = `hsla(${h2 + k * 12} 60% ${70 - k * 13}% / .75)`; g.beginPath(); g.moveTo(0, S);
+      const base = 140 + k * 38, amp = 18 + r() * 18, ph = r() * 6;
+      for (let x = 0; x <= S; x += 6) g.lineTo(x, base + Math.sin(x / 50 + ph) * amp);
+      g.lineTo(S, S); g.fill();
+    }
+  } else if (style === "house") {
+    g.lineWidth = 9;
+    for (let i = 10; i > 0; i--) { g.strokeStyle = i % 2 ? `hsla(${h2} 90% 70% / .9)` : `hsla(${h1} 80% 55% / .5)`; g.beginPath(); g.arc(150, 150, i * 15, 0, 7); g.stroke(); }
+  } else if (style === "maqam") {
+    // eight-point star lattice, as on Seljuk tilework
+    const star = (cx, cy, R) => { g.beginPath(); for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, rr = i % 2 ? R * 0.62 : R; g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.closePath(); };
+    g.lineWidth = 3;
+    for (let y = 0; y <= S; y += 75) for (let x = 0; x <= S; x += 75) { star(x, y, 34); g.fillStyle = `hsla(${h2} 75% 60% / .35)`; g.fill(); g.strokeStyle = "rgba(255,226,160,.85)"; g.stroke(); }
+  } else {
+    g.fillStyle = "rgba(255,255,255,.12)";
+    for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(r() * S, r() * S, 30 + r() * 90, 0, 7); g.fill(); }
+    g.fillStyle = "rgba(255,255,255,.85)"; g.font = "800 120px 'Bricolage Grotesque', sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("♪", 150, 140);
+  }
+  if (title) {
+    const sh = g.createLinearGradient(0, S - 110, 0, S); sh.addColorStop(0, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(0,0,0,.55)");
+    g.fillStyle = sh; g.fillRect(0, S - 110, S, 110);
+    g.fillStyle = "#fff"; g.font = "800 30px 'Bricolage Grotesque', sans-serif"; g.textAlign = "left"; g.textBaseline = "alphabetic";
+    const words = title.split(" "), lines = []; let line = "";
+    words.forEach(wd => { const t = line ? line + " " + wd : wd; if (g.measureText(t).width > S - 36 && line) { lines.push(line); line = wd; } else line = t; });
+    lines.push(line);
+    lines.slice(-2).forEach((l, i, a) => g.fillText(l, 18, S - 20 - (a.length - 1 - i) * 32));
+  }
+  return cv.toDataURL("image/jpeg", 0.85);
+}
+
+/* ============ State ============ */
+const $ = s => document.querySelector(s);
+const audio = $("#audio");
+const tracks = new Map();
+const STORE_KEY = "belesify:v1";
+let S = { playlists: [], liked: [], vol: 0.8, shuffle: false, repeat: 0, seeded: false, yt: [], ytSeeded: false, ytKey: "" };
+try { const raw = localStorage.getItem(STORE_KEY); if (raw) S = { ...S, ...JSON.parse(raw) }; } catch (e) {}
+const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} };
+
+const P = { cur: null, ctx: [], order: [], pos: -1, manual: [], ctxName: "", loading: false, token: 0, fromManual: false };
+const urlCache = new Map(); // id -> blob URL
+const pending = new Map();
+let view = { name: "home" };
+let searchQ = "", searchGenre = "", libTab = "all";
+
+STUDIO.forEach(d => tracks.set(d.id, { ...d, kind: "gen", duration: trackLength(d) }));
+
+if (!S.seeded) {
+  S.playlists = [
+    { id: "pl-ders", name: "Ders Çalışırken", ids: ["g1", "g4", "g7", "g8", "g10"], desc: "Sakin, sözsüz, odaklanmaya uygun." },
+    { id: "pl-gece", name: "Gece Sürüşü", ids: ["g2", "g6", "g9", "g11", "g3"], desc: "Şehir ışıkları ve dört dörtlük vuruşlar." }
+  ];
+  S.seeded = true; save();
+}
+
+/* ============ YouTube (official IFrame player) ============ */
+let yt = null, ytMain = null, ytApi = null, ytState = -1, ytResults = [], ytQuery = "", ytBusy = false, ytStartCheck = 0;
+const ytOrigin = /^https?:$/.test(location.protocol) ? location.origin : undefined;
+const eng = {
+  mode: "audio",
+  get paused() { return this.mode === "yt" ? !(ytState === 1 || ytState === 3) : audio.paused; },
+  play() { if (this.mode === "yt") { try { yt && yt.playVideo(); } catch (e) {} return Promise.resolve(); } return audio.play(); },
+  pause() { if (this.mode === "yt") { try { yt && yt.pauseVideo(); } catch (e) {} } else audio.pause(); },
+  get currentTime() { return this.mode === "yt" ? (yt?.getCurrentTime?.() || 0) : audio.currentTime; },
+  set currentTime(v) { if (this.mode === "yt") { try { yt?.seekTo?.(v, true); } catch (e) {} } else audio.currentTime = v; },
+  get duration() { return this.mode === "yt" ? (yt?.getDuration?.() || 0) : audio.duration; },
+  get muted() { return audio.muted; },
+  set muted(v) { audio.muted = v; try { if (yt) v ? yt.mute() : yt.unMute(); } catch (e) {} },
+  setVolume(v) { audio.volume = v; try { yt?.setVolume?.(Math.round(v * 100)); } catch (e) {} }
+};
+function loadYTApi() {
+  if (ytApi) return ytApi;
+  ytApi = new Promise((res, rej) => {
+    if (window.YT && window.YT.Player) return res();
+    const to = setTimeout(() => { ytApi = null; rej(new Error("timeout")); }, 15000);
+    const prevCb = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { clearTimeout(to); prevCb && prevCb(); res(); };
+    const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api";
+    sc.onerror = () => { clearTimeout(to); ytApi = null; rej(new Error("load")); };
+    document.head.appendChild(sc);
+  });
+  return ytApi;
+}
+function ensureYT() {
+  if (ytMain) return ytMain;
+  ytMain = loadYTApi().then(() => new Promise(res => {
+    const pv = { playsinline: 1, rel: 0 }; if (ytOrigin) pv.origin = ytOrigin;
+    const pl = new YT.Player("ytFrame", { width: "100%", height: "100%", playerVars: pv, events: { onReady: () => { yt = pl; syncVol(); res(pl); }, onStateChange: onYTState, onError: onYTError } });
+  }));
+  ytMain.catch(() => { ytMain = null; });
+  return ytMain;
+}
+function showVideo(on) { $("#vidbox").hidden = !on; document.body.classList.toggle("video-on", on); }
+function onYTState(e) {
+  ytState = e.data;
+  if (eng.mode !== "yt") return;
+  if (ytState === 1 || ytState === 2) P.loading = false;
+  if (ytState === 1) fillYTMeta();
+  if (ytState === 0) return next(true);
+  updatePlayer(); render(false); renderQueue();
+}
+function onYTError(e) {
+  if (eng.mode !== "yt") return;
+  P.loading = false; updatePlayer();
+  if (e.data === 152 || e.data === 153) return toast("YouTube bu sayfayı tanımadı. Dosyayı çift tıklayarak değil, bir web adresinden (http://…) aç.");
+  toast(e.data === 101 || e.data === 150 ? "Bu videonun sahibi başka sitelerde oynatılmasına izin vermiyor. Sonrakine geçiliyor." : "Video oynatılamadı. Sonrakine geçiliyor.");
+  setTimeout(() => next(), 1200);
+}
+function fillYTMeta() {
+  const t = tracks.get(P.cur); if (!t || t.kind !== "yt" || !yt) return;
+  let changed = false;
+  try {
+    const d = yt.getVideoData ? yt.getVideoData() : null, dur = yt.getDuration();
+    if (d && d.title && t.placeholder) { t.title = d.title; t.artist = d.author || t.artist; t.placeholder = false; changed = true; }
+    if (dur && Math.abs(dur - t.duration) > 1) { t.duration = dur; changed = true; }
+  } catch (e) {}
+  if (changed) { saveYT(); setSession(t); }
+}
+const ytThumb = vid => `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+function addYTRecord(r) {
+  tracks.set("yt-" + r.vid, { id: "yt-" + r.vid, vid: r.vid, title: r.title || "YouTube videosu", artist: r.artist || "YouTube", genre: "YouTube", kind: "yt", duration: r.duration || 0, placeholder: !r.title, cover: ytThumb(r.vid) });
+}
+function saveYT() {
+  S.yt = [...tracks.values()].filter(t => t.kind === "yt").map(t => ({ vid: t.vid, title: t.placeholder ? "" : t.title, artist: t.artist, duration: Math.round(t.duration || 0) }));
+  save();
+}
+function addYT(vid, meta) {
+  const id = "yt-" + vid;
+  if (!tracks.has(id)) { addYTRecord({ vid, ...(meta || {}) }); saveYT(); if (!meta || !meta.title) fetchYTMeta(vid); }
+  return id;
+}
+async function fetchYTMeta(vid) {
+  const url = encodeURIComponent("https://www.youtube.com/watch?v=" + vid);
+  for (const ep of ["https://www.youtube.com/oembed?format=json&url=" + url, "https://noembed.com/embed?url=" + url]) {
+    try {
+      const r = await fetch(ep); if (!r.ok) continue;
+      const j = await r.json(); if (!j.title) continue;
+      const t = tracks.get("yt-" + vid); if (!t || !t.placeholder) return;
+      t.title = j.title; t.artist = j.author_name || t.artist; t.placeholder = false;
+      saveYT(); render(false); updatePlayer(); renderQueue();
+      return;
+    } catch (e) {}
+  }
+}
+function parseYT(str) {
+  str = str.trim(); if (!str) return null;
+  if (/^[\w-]{11}$/.test(str)) return { v: str };
+  let u; try { u = new URL(/^\w+:\/\//.test(str) ? str : "https://" + str); } catch (e) { return null; }
+  const h = u.hostname.replace(/^(www|m|music)\./, "");
+  let v = null; const list = u.searchParams.get("list");
+  if (h === "youtu.be") v = u.pathname.slice(1, 12);
+  else if (h === "youtube.com" || h === "youtube-nocookie.com") { v = u.searchParams.get("v"); const m = u.pathname.match(/\/(?:embed|shorts|live|v)\/([\w-]{11})/); if (!v && m) v = m[1]; }
+  else return null;
+  if (v && !/^[\w-]{11}$/.test(v)) v = null;
+  return v || list ? { v, list } : null;
+}
+const decodeHTML = s => { const ta = document.createElement("textarea"); ta.innerHTML = s; return ta.value; };
+const isoDur = s => { const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || ""); return m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) : 0; };
+async function ytApiGet(path, params) {
+  const q = new URLSearchParams({ ...params, key: S.ytKey });
+  const r = await fetch("https://www.googleapis.com/youtube/v3/" + path + "?" + q);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error?.message || "HTTP " + r.status);
+  return j;
+}
+function probePlaylist(list) {
+  return loadYTApi().then(() => new Promise((res, rej) => {
+    $("#ytProbe").innerHTML = '<div id="ytProbeInner"></div>';
+    let done = false, p;
+    const fin = (v, err) => { if (done) return; done = true; clearTimeout(to); try { p.destroy(); } catch (e) {} err ? rej(err) : res(v); };
+    const to = setTimeout(() => fin(null, new Error("timeout")), 15000);
+    const pv = { listType: "playlist", list }; if (ytOrigin) pv.origin = ytOrigin;
+    p = new YT.Player("ytProbeInner", { width: 200, height: 200, playerVars: pv, events: {
+      onReady: () => { const tryGet = n => { const ids = p.getPlaylist && p.getPlaylist(); if (ids && ids.length) fin(ids); else if (n > 0) setTimeout(() => tryGet(n - 1), 500); else fin(null, new Error("empty")); }; tryGet(16); },
+      onError: e => fin(null, new Error("yt " + e.data)) } });
+  }));
+}
+async function importYTPlaylist(list) {
+  let name = "YouTube listesi", items = [];
+  if (S.ytKey) {
+    const info = await ytApiGet("playlists", { part: "snippet", id: list }).catch(() => null);
+    if (info?.items?.[0]) name = decodeHTML(info.items[0].snippet.title);
+    let page = "";
+    for (let k = 0; k < 4; k++) {
+      const j = await ytApiGet("playlistItems", { part: "snippet", maxResults: 50, playlistId: list, ...(page ? { pageToken: page } : {}) });
+      j.items.forEach(it => { const sn = it.snippet, vid = sn.resourceId?.videoId; if (vid && sn.title !== "Private video" && sn.title !== "Deleted video") items.push({ vid, title: decodeHTML(sn.title), artist: sn.videoOwnerChannelTitle || "YouTube" }); });
+      page = j.nextPageToken; if (!page) break;
+    }
+  } else {
+    const ids = await probePlaylist(list);
+    items = ids.map(vid => ({ vid }));
+  }
+  if (!items.length) throw new Error("empty");
+  const ids = items.map(it => addYT(it.vid, it.title ? it : null));
+  const pl = { id: "pl-" + Date.now().toString(36), name, ids, desc: "YouTube'dan içe aktarıldı." };
+  S.playlists.push(pl); save();
+  return pl;
+}
+async function handleYTInput(str) {
+  const r = parseYT(str);
+  if (!r) return toast("Bu bir YouTube bağlantısına benzemiyor. Örnek: https://www.youtube.com/watch?v=…");
+  if (r.list && !r.v || r.list && r.list.startsWith("PL") ) {
+    ytBusy = true; render(false); toast("Oynatma listesi okunuyor…");
+    try { const pl = await importYTPlaylist(r.list); toast(`"${pl.name}" eklendi, ${pl.ids.length} şarkı`); ytBusy = false; return go("pl:" + pl.id); }
+    catch (e) { ytBusy = false; render(false); if (!r.v) return toast("Oynatma listesi okunamadı. Liste herkese açık mı?"); }
+  }
+  const id = addYT(r.v);
+  toast("YouTube şarkıların arasına eklendi");
+  render(false);
+  playContext(ytTrackIds(), id, "yt");
+}
+const ytTrackIds = () => [...tracks.values()].filter(t => t.kind === "yt").map(t => t.id);
+async function ytSearch(q) {
+  ytQuery = q; if (!q.trim() || !S.ytKey) return render(false);
+  ytBusy = true; render(false);
+  try {
+    const j = await ytApiGet("search", { part: "snippet", type: "video", videoEmbeddable: "true", maxResults: 20, q });
+    ytResults = j.items.filter(it => it.id?.videoId).map(it => ({ vid: it.id.videoId, title: decodeHTML(it.snippet.title), artist: decodeHTML(it.snippet.channelTitle), duration: 0 }));
+    if (ytResults.length) {
+      const d = await ytApiGet("videos", { part: "contentDetails", id: ytResults.map(r => r.vid).join(",") }).catch(() => null);
+      d?.items?.forEach(it => { const r = ytResults.find(x => x.vid === it.id); if (r) r.duration = isoDur(it.contentDetails.duration); });
+    }
+  } catch (e) { ytResults = []; toast("Arama yapılamadı: " + e.message); }
+  ytBusy = false; render(false);
+}
+S.yt.forEach(addYTRecord);
+if (!S.ytSeeded) { addYT("jfKfPfyJRdk", { title: "lofi hip hop radio - beats to relax/study to", artist: "Lofi Girl", duration: 0 }); S.ytSeeded = true; save(); }
+setInterval(() => {
+  if (eng.mode !== "yt") return;
+  onTime();
+  if (P.loading && ytStartCheck && Date.now() - ytStartCheck > 4000 && (ytState === -1 || ytState === 5)) { P.loading = false; ytStartCheck = 0; updatePlayer(); render(false); toast("Başlatmak için çal tuşuna bas"); }
+}, 300);
+
+/* ============ Local files (IndexedDB) ============ */
+let db = null;
+function openDB() {
+  return new Promise(res => {
+    try {
+      const rq = indexedDB.open("belesify", 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore("files", { keyPath: "id" });
+      rq.onsuccess = () => { db = rq.result; res(db); };
+      rq.onerror = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
+function dbAll() {
+  return new Promise(res => {
+    if (!db) return res([]);
+    try { const rq = db.transaction("files").objectStore("files").getAll(); rq.onsuccess = () => res(rq.result || []); rq.onerror = () => res([]); } catch (e) { res([]); }
+  });
+}
+function dbPut(rec) { return new Promise(res => { if (!db) return res(false); try { const tx = db.transaction("files", "readwrite"); tx.objectStore("files").put(rec); tx.oncomplete = () => res(true); tx.onerror = () => res(false); } catch (e) { res(false); } }); }
+function dbDel(id) { return new Promise(res => { if (!db) return res(false); try { const tx = db.transaction("files", "readwrite"); tx.objectStore("files").delete(id); tx.oncomplete = () => res(true); tx.onerror = () => res(false); } catch (e) { res(false); } }); }
+
+function addLocalRecord(rec) {
+  tracks.set(rec.id, { id: rec.id, title: rec.title, artist: rec.artist, genre: "Dosyalarım", kind: "local", blob: rec.blob, duration: rec.duration || 0, added: rec.added, cover: drawCover(hash(rec.title + rec.artist), "local") });
+}
+function probeDuration(blob) {
+  return new Promise(res => { const a = new Audio(), u = URL.createObjectURL(blob); a.preload = "metadata"; a.onloadedmetadata = () => { res(isFinite(a.duration) ? a.duration : 0); URL.revokeObjectURL(u); }; a.onerror = () => { res(-1); URL.revokeObjectURL(u); }; a.src = u; });
+}
+async function importFiles(list) {
+  const files = [...list].filter(f => f.type.startsWith("audio/") || /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|webm)$/i.test(f.name));
+  if (!files.length) return toast("Ses dosyası bulunamadı. MP3, M4A, OGG, WAV veya FLAC deneyin.");
+  let ok = 0, persisted = true;
+  for (const f of files) {
+    const dur = await probeDuration(f);
+    if (dur < 0) continue;
+    const base = f.name.replace(/\.[^.]+$/, "").replace(/_/g, " ").trim();
+    const m = base.match(/^(.+?)\s+-\s+(.+)$/);
+    const rec = { id: "f-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: m ? m[2] : base, artist: m ? m[1] : "Bilinmeyen sanatçı", blob: f, duration: dur, added: Date.now() };
+    addLocalRecord(rec); ok++;
+    if (!(await dbPut(rec))) persisted = false;
+  }
+  if (!ok) return toast("Bu dosyalar tarayıcında çalınamıyor.");
+  toast(ok + " şarkı kitaplığına eklendi" + (persisted ? "" : " (bu sekme kapanınca silinecek)"));
+  if (view.name !== "library") libTab = "files", go("library"); else render();
+}
+
+/* ============ Playback ============ */
+const fmt = s => { if (!isFinite(s) || s < 0) s = 0; s = Math.round(s); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+
+function getUrl(t) {
+  if (urlCache.has(t.id)) { const u = urlCache.get(t.id); urlCache.delete(t.id); urlCache.set(t.id, u); return Promise.resolve(u); }
+  if (t.kind === "local") { const u = URL.createObjectURL(t.blob); urlCache.set(t.id, u); return Promise.resolve(u); }
+  if (pending.has(t.id)) return pending.get(t.id);
+  const p = renderTrack(t).then(buf => {
+    const u = URL.createObjectURL(toWav(buf));
+    urlCache.set(t.id, u); pending.delete(t.id);
+    while (urlCache.size > 6) { const [k, v] = urlCache.entries().next().value; if (k === P.cur) { urlCache.delete(k); urlCache.set(k, v); continue; } URL.revokeObjectURL(v); urlCache.delete(k); }
+    return u;
+  }).catch(e => { pending.delete(t.id); throw e; });
+  pending.set(t.id, p);
+  return p;
+}
+
+function buildOrder(startIdx) {
+  const n = P.ctx.length, idx = [...Array(n).keys()];
+  if (S.shuffle) {
+    const rest = idx.filter(i => i !== startIdx);
+    for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+    P.order = startIdx >= 0 ? [startIdx, ...rest] : rest;
+    P.pos = startIdx >= 0 ? 0 : -1;
+  } else { P.order = idx; P.pos = startIdx; }
+}
+
+function playContext(ids, startId, name) {
+  ids = ids.filter(id => tracks.has(id));
+  if (!ids.length) return;
+  P.ctx = ids; P.ctxName = name || "";
+  let si = startId ? ids.indexOf(startId) : -1;
+  if (si < 0) si = S.shuffle ? Math.floor(Math.random() * ids.length) : 0;
+  buildOrder(si);
+  load(P.ctx[P.order[P.pos]]);
+}
+
+async function load(id, autoplay = true) {
+  const t = tracks.get(id); if (!t) return;
+  const my = ++P.token;
+  eng.pause();
+  P.cur = id; P.loading = t.kind === "gen" && !urlCache.has(id);
+  if (t.kind === "yt") {
+    eng.mode = "yt"; audio.removeAttribute("src"); audio.load();
+    P.loading = true; ytState = -1; showVideo(true);
+    updatePlayer(); render(false); renderQueue();
+    try { await ensureYT(); } catch (e) { if (my === P.token) { P.loading = false; updatePlayer(); render(false); toast("YouTube oynatıcısı yüklenemedi. İnternet bağlantını kontrol et."); } return; }
+    if (my !== P.token) return;
+    try { autoplay ? yt.loadVideoById(t.vid) : (yt.cueVideoById(t.vid), P.loading = false); } catch (e) {}
+    ytStartCheck = autoplay ? Date.now() : 0;
+    setSession(t); updatePlayer(); render(false);
+    return;
+  }
+  if (eng.mode === "yt") { try { yt && yt.stopVideo(); } catch (e) {} ytState = -1; }
+  eng.mode = "audio"; showVideo(false);
+  updatePlayer(); render(false); renderQueue();
+  try {
+    const u = await getUrl(t);
+    if (my !== P.token) return;
+    P.loading = false;
+    audio.src = u; audio.currentTime = 0;
+    if (autoplay) await audio.play().catch(() => {});
+    
+    setSession(t);
+    prefetch();
+  } catch (e) {
+    if (my !== P.token) return;
+    P.loading = false; toast("Şarkı hazırlanamadı. Sonrakine geçiliyor."); next(true);
+  }
+  updatePlayer(); render(false);
+}
+
+function upcomingIds(limit = 30) {
+  const out = [];
+  for (let k = P.pos + 1; k < P.order.length && out.length < limit; k++) out.push(P.ctx[P.order[k]]);
+  if (S.repeat === 1 && P.order.length) for (let k = 0; k <= P.pos && out.length < limit; k++) out.push(P.ctx[P.order[k]]);
+  return out;
+}
+function prefetch() {
+  const nid = P.manual[0] || upcomingIds(1)[0];
+  const t = nid && tracks.get(nid);
+  if (t && t.kind === "gen" && !urlCache.has(nid)) setTimeout(() => getUrl(t).catch(() => {}), 1200);
+}
+
+function next(auto = false) {
+  if (auto && S.repeat === 2 && P.cur) { eng.currentTime = 0; eng.play(); return; }
+  if (P.manual.length) { P.fromManual = true; return load(P.manual.shift()); }
+  P.fromManual = false;
+  if (!P.order.length) return;
+  if (P.pos + 1 < P.order.length) P.pos++;
+  else if (S.repeat === 1) { if (S.shuffle) buildOrder(-1); P.pos = 0; }
+  else { if (auto) { eng.pause(); eng.currentTime = 0; P.pos = 0; return load(P.ctx[P.order[0]], false); } return; }
+  load(P.ctx[P.order[P.pos]]);
+}
+function prev() {
+  if (eng.currentTime > 3 || !P.order.length) { eng.currentTime = 0; return; }
+  if (P.fromManual) { P.fromManual = false; return load(P.ctx[P.order[P.pos]]); }
+  if (P.pos > 0) P.pos--; else if (S.repeat === 1) P.pos = P.order.length - 1; else { eng.currentTime = 0; return; }
+  load(P.ctx[P.order[P.pos]]);
+}
+function toggle() {
+  if (!P.cur) return playContext(STUDIO.map(t => t.id), null, "Beleşify Stüdyo");
+  if (P.loading) return;
+  eng.paused ? eng.play().catch(() => {}) : eng.pause();
+}
+function playOrToggle(ids, startId, name) {
+  const same = P.ctxName === name && P.cur && (!startId || startId === P.cur);
+  if (same) return toggle();
+  playContext(ids, startId, name);
+}
+
+function setSession(t) {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: t.kind === "gen" ? "Beleşify Stüdyo" : "Dosyalarım", artwork: [{ src: coverOf(t), sizes: "300x300", type: "image/jpeg" }] });
+  } catch (e) {}
+}
+try {
+  navigator.mediaSession.setActionHandler("play", () => eng.play());
+  navigator.mediaSession.setActionHandler("pause", () => eng.pause());
+  navigator.mediaSession.setActionHandler("nexttrack", () => next());
+  navigator.mediaSession.setActionHandler("previoustrack", () => prev());
+} catch (e) {}
+
+const coverOf = t => t.cover || (t.cover = drawCover(t.seed, t.style));
+
+/* ============ Rendering ============ */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const icon = (n, cls = "i") => `<svg class="${cls}"><use href="#i-${n}"/></svg>`;
+const isLiked = id => S.liked.includes(id);
+const playing = () => !eng.paused || P.loading;
+const plById = id => S.playlists.find(p => p.id === id);
+const plIds = p => p.ids.filter(id => tracks.has(id));
+const totalDur = ids => { const s = ids.reduce((a, id) => a + (tracks.get(id)?.duration || 0), 0), m = Math.round(s / 60); return m >= 60 ? Math.floor(m / 60) + " sa " + (m % 60) + " dk" : m + " dk"; };
+const genres = () => [...new Set(STUDIO.map(t => t.genre))];
+
+function plArt(p, cls = "") {
+  const ids = plIds(p);
+  if (!ids.length) return `<div class="hero-art one ${cls}"><div class="pl-ico">${icon("note")}</div></div>`;
+  if (ids.length < 4) return `<div class="hero-art one ${cls}"><img src="${coverOf(tracks.get(ids[0]))}" alt=""></div>`;
+  return `<div class="hero-art ${cls}">${ids.slice(0, 4).map(id => `<img src="${coverOf(tracks.get(id))}" alt="">`).join("")}</div>`;
+}
+function plThumb(p) {
+  const ids = plIds(p);
+  return ids.length ? `<img src="${coverOf(tracks.get(ids[0]))}" alt="">` : `<span class="pl-ico">${icon("note")}</span>`;
+}
+const likedThumb = () => `<span class="pl-ico">${icon("heart")}</span>`;
+
+function playIcon(active) { return active && playing() ? (P.loading ? `<span class="spin"></span>` : icon("pause")) : icon("play"); }
+
+function trackList(ids, ctxName, opts = {}) {
+  if (!ids.length) return `<div class="empty">${opts.empty || "<b>Burada henüz şarkı yok</b>Bir şarkının ⋯ menüsünden ekleyebilirsin."}</div>`;
+  const rows = ids.map((id, i) => {
+    const t = tracks.get(id), cur = P.cur === id, liked = isLiked(id);
+    return `<div class="row${cur ? " cur" : ""}${cur && eng.paused && !P.loading ? " paused" : ""}" data-row="${id}" data-i="${i}">
+      <div class="num">${cur && !eng.paused ? `<span><span class="eq"><i></i><i></i><i></i></span></span>` : `<span>${i + 1}</span>`}<button data-act="row-play" aria-label="${esc(t.title)} çal">${cur ? playIcon(true) : icon("play")}</button></div>
+      <div class="t"><img src="${coverOf(t)}" alt="" loading="lazy"><div><b>${esc(t.title)}</b><small>${t.kind === "local" ? `<span class="tag">Dosya</span>` : t.kind === "yt" ? `<span class="tag" style="background:#ff4e45;color:#fff">YT</span>` : ""}${esc(t.artist)}</small></div></div>
+      <span class="g">${esc(t.genre)}</span>
+      <button class="icon-btn like${liked ? " on" : ""}" data-act="like" data-id="${id}" aria-label="${liked ? "Beğenilerden çıkar" : "Beğen"}" aria-pressed="${liked}">${icon(liked ? "heart" : "heart-o")}</button>
+      <span class="d">${t.kind === "yt" && !t.duration ? "–" : fmt(t.duration)}</span>
+      <button class="icon-btn more" data-act="more" data-id="${id}" aria-label="Diğer seçenekler" aria-haspopup="menu">${icon("more")}</button>
+    </div>`;
+  }).join("");
+  return `<div class="tl" data-ctx="${esc(ctxName)}" data-ids="${ids.join(",")}"${opts.pl ? ` data-pl="${opts.pl}"` : ""}>
+    <div class="tl-head"><span style="text-align:center">#</span><span>Başlık</span><span class="g">Tür</span><span></span><span style="text-align:right">Süre</span><span></span></div>${rows}</div>`;
+}
+
+function card(t, ctxIds, ctxName) {
+  const active = P.cur === t.id && P.ctxName === ctxName;
+  return `<div class="card${active && playing() ? " playing" : ""}" data-open-track="${t.id}">
+    <div class="card-art"><img src="${coverOf(t)}" alt="">
+      <button class="fab" data-act="play-ctx" data-ids="${ctxIds.join(",")}" data-start="${t.id}" data-name="${esc(ctxName)}" aria-label="${esc(t.title)} çal">${playIcon(active)}</button></div>
+    <b>${esc(t.title)}</b><small>${esc(t.artist)} · ${esc(t.genre)}</small></div>`;
+}
+
+function greeting() { const h = new Date().getHours(); return h < 6 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "Tünaydın" : "İyi akşamlar"; }
+
+function viewHome() {
+  const locals = [...tracks.values()].filter(t => t.kind === "local");
+  const studioIds = STUDIO.map(t => t.id);
+  const qt = [
+    `<button class="qtile" data-go="liked">${likedThumb()}<span>Beğenilen Şarkılar</span><span class="fab" data-act="play-ctx" data-ids="${S.liked.join(",")}" data-name="Beğenilen Şarkılar" role="button" aria-label="Beğenilenleri çal">${playIcon(P.ctxName === "Beğenilen Şarkılar")}</span></button>`,
+    ...S.playlists.slice(0, 3).map(p => `<button class="qtile" data-go="pl:${p.id}">${plThumb(p)}<span>${esc(p.name)}</span><span class="fab" data-act="play-ctx" data-ids="${plIds(p).join(",")}" data-name="pl:${p.id}" role="button" aria-label="${esc(p.name)} çal">${playIcon(P.ctxName === "pl:" + p.id)}</span></button>`),
+    ...STUDIO.slice(0, 5 - Math.min(3, S.playlists.length)).map(t => `<button class="qtile" data-act="play-ctx" data-ids="${studioIds.join(",")}" data-start="${t.id}" data-name="Beleşify Stüdyo"><img src="${coverOf(t)}" alt=""><span>${esc(t.title)}</span><span class="fab" aria-hidden="true">${playIcon(P.cur === t.id && P.ctxName === "Beleşify Stüdyo")}</span></button>`)
+  ].slice(0, 6);
+  return `<div class="view tinted" style="--tint:#1d4a33">
+    <div><h1>${greeting()}</h1><p class="lede">Abonelik yok. YouTube'daki şarkıları bağlantısını yapıştırarak ekle, kendi müzik dosyalarını bırak ya da tarayıcında bestelenen Beleşify Stüdyo parçalarını dinle.</p></div>
+    ${installEvt ? `<button class="ghost" data-act="install" style="align-self:flex-start">${icon("upload")} Beleşify'ı bu cihaza kur</button>` : ""}
+    <div class="quick">${qt.join("")}</div>
+    <section class="sec"><div class="sec-head"><h2>YouTube'dan</h2><button class="ghost" data-go="yt">Şarkı ekle</button></div>
+      <div class="cards">${ytTrackIds().slice(0, 8).map(id => card(tracks.get(id), ytTrackIds(), "yt")).join("")}</div></section>
+    <section class="sec"><div class="sec-head"><h2>Beleşify Stüdyo'dan</h2><p>${STUDIO.length} özgün parça</p></div>
+      <div class="cards">${STUDIO.map(t => card(tracks.get(t.id), studioIds, "Beleşify Stüdyo")).join("")}</div></section>
+    <section class="sec"><div class="sec-head"><h2>Türlere göz at</h2></div>${genreGrid()}</section>
+    <section class="sec"><div class="sec-head"><h2>Senin dosyaların</h2>${locals.length ? `<p>${locals.length} şarkı</p>` : ""}</div>
+      ${locals.length ? `<div class="cards">${locals.slice(0, 8).map(t => card(t, locals.map(x => x.id), "Dosyalarım")).join("")}</div>` : dropZone()}</section>
+    <div class="note">${icon("wave")}<p><b>Müzik nereden geliyor?</b> Stüdyo parçaları kodla üretilen özgün besteler: her biri kendi temposu, gamı ve akor yürüyüşüyle (Hicaz Dalgası gerçekten Hicaz makamında ve maqsum ritmiyle çalıyor). Kendi eklediğin dosyalar yalnızca bu tarayıcıda saklanır, hiçbir yere yüklenmez.</p></div>
+  </div>`;
+}
+const GENRE_TINT = { "Lo-fi": "#7a4a2f", "Synthwave": "#8a2f6b", "Makam Elektronik": "#2f5e7a", "Ambient": "#2f6a5a", "Chiptune": "#4a3f9a", "House": "#9a3f3f", "YouTube": "#8f2a2a", "Dosyalarım": "#555066" };
+function genreGrid() {
+  return `<div class="genres">${genres().map(g => { const first = STUDIO.find(t => t.genre === g); const n = STUDIO.filter(t => t.genre === g).length; return `<button class="genre" style="background:${GENRE_TINT[g]}" data-genre="${esc(g)}"><span>${esc(g)}</span><small>${n} parça</small><img src="${coverOf(tracks.get(first.id))}" alt=""></button>`; }).join("")}</div>`;
+}
+function dropZone() {
+  return `<div class="drop" data-drop>Bilgisayarındaki MP3, M4A, OGG, WAV veya FLAC dosyalarını buraya sürükle ya da <label for="fileIn">dosya seç</label>.<br>Dosyalar sadece bu tarayıcıda kalır.</div>`;
+}
+
+function viewSearch() {
+  const q = searchQ.trim().toLocaleLowerCase("tr");
+  const all = [...tracks.values()];
+  let res = all;
+  if (searchGenre) res = res.filter(t => t.genre === searchGenre);
+  if (q) res = res.filter(t => (t.title + " " + t.artist + " " + t.genre).toLocaleLowerCase("tr").includes(q));
+  const pls = q ? S.playlists.filter(p => p.name.toLocaleLowerCase("tr").includes(q)) : [];
+  const showing = q || searchGenre;
+  const chipList = [...genres(), ...(all.some(t => t.kind === "yt") ? ["YouTube"] : []), ...(all.some(t => t.kind === "local") ? ["Dosyalarım"] : [])];
+  return `<div class="view">
+    <h1>Ara</h1>
+    <div class="search-box">${icon("search")}<input id="q" type="search" placeholder="Şarkı, sanatçı veya tür" value="${esc(searchQ)}" autocomplete="off" aria-label="Ara"></div>
+    <div class="chips">${chipList.map(g => `<button class="chip${searchGenre === g ? " on" : ""}" data-chip="${esc(g)}">${esc(g)}</button>`).join("")}</div>
+    <div id="results">${showing ? `
+      ${pls.length ? `<section class="sec" style="margin-bottom:24px"><h2>Çalma listeleri</h2><div class="quick">${pls.map(p => `<button class="qtile" data-go="pl:${p.id}">${plThumb(p)}<span>${esc(p.name)}</span></button>`).join("")}</div></section>` : ""}
+      ${q && S.ytKey ? `<button class="ghost" data-act="yt-search-from" data-q="${esc(searchQ)}" style="align-self:flex-start;margin-bottom:18px">${icon("yt")} "${esc(searchQ)}" için YouTube'da ara</button>` : ""}<section class="sec"><div class="sec-head"><h2>Şarkılar</h2><p>${res.length} sonuç</p></div>${trackList(res.map(t => t.id), "search:" + q + "|" + searchGenre, { empty: `<b>"${esc(searchQ || searchGenre)}" için sonuç yok</b>Başka bir kelime dene ya da kendi dosyalarını ekle.` })}</section>`
+      : `<section class="sec"><h2>Hepsine göz at</h2>${genreGrid()}</section>`}</div>
+  </div>`;
+}
+
+function viewYT() {
+  const ids = ytTrackIds();
+  const results = ytResults.map(r => { const have = tracks.has("yt-" + r.vid); return `<div class="yrow"><img src="https://i.ytimg.com/vi/${r.vid}/mqdefault.jpg" alt="" loading="lazy"><div class="yt-t"><b>${esc(r.title)}</b><small>${esc(r.artist)}${r.duration ? " · " + fmt(r.duration) : ""}</small></div>
+    <button class="icon-btn" data-act="yt-play" data-vid="${r.vid}" aria-label="${esc(r.title)} çal">${icon("play")}</button>
+    <button class="icon-btn${have ? " on" : ""}" data-act="yt-add" data-vid="${r.vid}" aria-label="${have ? "Eklendi" : "Kitaplığa ekle"}" title="${have ? "Eklendi" : "Kitaplığa ekle"}">${icon(have ? "heart" : "plus")}</button></div>`; }).join("");
+  return `<div class="view tinted" style="--tint:#5a1f24">
+    <div><h1>YouTube</h1><p class="lede">Bir video ya da oynatma listesi bağlantısını yapıştır. Şarkılar YouTube'un kendi oynatıcısıyla çalar; videonun küçük penceresi sağ altta açık kalır.</p></div>
+    <form class="ytadd" id="ytAddForm"><input id="ytUrl" placeholder="https://www.youtube.com/watch?v=… ya da playlist?list=…" autocomplete="off" aria-label="YouTube bağlantısı"><button class="solid" ${ytBusy ? "disabled" : ""}>${ytBusy ? "Okunuyor…" : "Ekle"}</button></form>
+    <section class="sec"><div class="sec-head"><h2>YouTube'da ara</h2>${S.ytKey ? `<button class="ghost" data-act="yt-forget-key">Anahtarı kaldır</button>` : ""}</div>
+      ${S.ytKey ? `<form class="ytadd" id="ytSearchForm"><input id="ytQ" type="search" placeholder="Şarkı veya sanatçı" value="${esc(ytQuery)}" autocomplete="off" aria-label="YouTube'da ara"><button class="solid" ${ytBusy ? "disabled" : ""}>Ara</button></form>
+        ${results ? `<div class="yres">${results}</div>` : ytQuery && !ytBusy ? `<div class="empty"><b>Sonuç yok</b>Başka bir şey ara.</div>` : ""}`
+      : `<div class="note">${icon("search")}<p><b>Arama için ücretsiz bir YouTube API anahtarı gerekiyor.</b> Bağlantı yapıştırmak için gerekmez. Anahtarı <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">Google Cloud Console</a>'da "YouTube Data API v3"ü etkinleştirip Kimlik bilgileri bölümünden bir API anahtarı oluşturarak alabilirsin. Anahtar sadece bu tarayıcıda saklanır.</p></div>
+        <form class="ytadd" id="ytKeyForm"><input id="ytKey" placeholder="API anahtarını yapıştır (AIza…)" autocomplete="off" aria-label="YouTube API anahtarı"><button class="solid">Kaydet</button></form>`}
+    </section>
+    <section class="sec"><div class="sec-head"><h2>YouTube şarkıların</h2><p>${ids.length} şarkı</p></div>
+      ${trackList(ids, "yt", { empty: "<b>Henüz YouTube şarkısı eklemedin</b>Yukarıya bir bağlantı yapıştır." })}</section>
+  </div>`;
+}
+
+function viewLibrary() {
+  const all = [...tracks.values()];
+  const list = libTab === "files" ? all.filter(t => t.kind === "local") : libTab === "studio" ? all.filter(t => t.kind === "gen") : libTab === "yt" ? all.filter(t => t.kind === "yt") : all;
+  const locals = all.filter(t => t.kind === "local").length;
+  return `<div class="view">
+    <h1>Kitaplığın</h1>
+    <div class="chips">
+      <button class="chip${libTab === "all" ? " on" : ""}" data-lib="all">Tümü · ${all.length}</button>
+      <button class="chip${libTab === "studio" ? " on" : ""}" data-lib="studio">Beleşify Stüdyo · ${STUDIO.length}</button>
+      <button class="chip${libTab === "yt" ? " on" : ""}" data-lib="yt">YouTube · ${all.filter(t => t.kind === "yt").length}</button>
+      <button class="chip${libTab === "files" ? " on" : ""}" data-lib="files">Dosyalarım · ${locals}</button>
+    </div>
+    <section class="sec"><div class="sec-head"><h2>Çalma listeleri</h2><button class="ghost" data-act="new-pl">Yeni liste</button></div>
+      <div class="quick"><button class="qtile" data-go="liked">${likedThumb()}<span>Beğenilen Şarkılar · ${S.liked.filter(id => tracks.has(id)).length}</span></button>${S.playlists.map(p => `<button class="qtile" data-go="pl:${p.id}">${plThumb(p)}<span>${esc(p.name)} · ${plIds(p).length}</span></button>`).join("")}</div></section>
+    <section class="sec"><div class="sec-head"><h2>Şarkılar</h2><p>${totalDur(list.map(t => t.id))}</p></div>
+      ${trackList(list.map(t => t.id), "lib:" + libTab, { empty: "<b>Henüz dosya eklemedin</b>Aşağıdaki alana müzik dosyalarını bırak." })}</section>
+    ${dropZone()}
+  </div>`;
+}
+
+function viewPlaylist(p, liked) {
+  const ids = liked ? S.liked.filter(id => tracks.has(id)) : plIds(p);
+  const name = liked ? "Beğenilen Şarkılar" : p.name, ctxName = liked ? "Beğenilen Şarkılar" : "pl:" + p.id;
+  const art = liked ? `<div class="hero-art one"><div class="pl-ico">${icon("heart")}</div></div>` : plArt(p);
+  const tint = liked ? "#3b2d7a" : `hsl(${hash(p.id) % 360} 35% 28%)`;
+  const active = P.ctxName === ctxName;
+  return `<div class="view tinted" style="--tint:${tint}">
+    <div class="hero">${art}<div class="hero-txt"><span class="eyebrow">Çalma listesi</span><h1>${esc(name)}</h1>
+      <p>${liked ? "Kalbe dokunduğun her şarkı burada." : esc(p.desc || "")}</p><p><b style="color:var(--fg)">Sen</b> · ${ids.length} şarkı, ${totalDur(ids)}</p></div></div>
+    <div class="actions">
+      <button class="fab" data-act="play-ctx" data-ids="${ids.join(",")}" data-name="${ctxName}" aria-label="Listeyi çal" ${ids.length ? "" : "disabled"}>${playIcon(active)}</button>
+      <button class="icon-btn${S.shuffle ? " on" : ""}" data-act="shuffle" title="Karıştır" aria-label="Karıştır" style="width:44px;height:44px">${icon("shuf")}</button>
+      ${liked ? "" : `<button class="ghost" data-act="rename-pl" data-id="${p.id}">Yeniden adlandır</button><button class="ghost danger" data-act="del-pl" data-id="${p.id}">Listeyi sil</button>`}
+    </div>
+    ${trackList(ids, ctxName, { pl: liked ? "liked" : p.id, empty: liked ? "<b>Henüz beğendiğin şarkı yok</b>Bir şarkının yanındaki kalbe dokun." : "<b>Bu liste boş</b>Bir şarkının ⋯ menüsünden “Çalma listesine ekle”yi seç." })}
+  </div>`;
+}
+
+function render(full = true) {
+  const main = $("#main"), st = main.scrollTop;
+  let html;
+  if (view.name === "home") html = viewHome();
+  else if (view.name === "search") html = viewSearch();
+  else if (view.name === "library") html = viewLibrary();
+  else if (view.name === "yt") html = viewYT();
+  else if (view.name === "liked") html = viewPlaylist(null, true);
+  else if (view.name.startsWith("pl:")) { const p = plById(view.name.slice(3)); if (!p) { view = { name: "home" }; return render(); } html = viewPlaylist(p); }
+  if (!full && view.name === "yt" && document.activeElement?.closest?.(".ytadd")) return;
+  if (!full && view.name === "search") {
+    // keep the search input (and its focus/caret) intact; refresh only results
+    const tmp = document.createElement("div"); tmp.innerHTML = html;
+    const r = tmp.querySelector("#results"), cur = $("#results");
+    if (cur && r) { cur.innerHTML = r.innerHTML; return; }
+  }
+  main.innerHTML = html;
+  if (!full) main.scrollTop = st;
+  document.querySelectorAll("[data-go]").forEach(b => b.classList.toggle("on", b.closest(".nav,.mnav") && b.dataset.go === view.name));
+  renderSide();
+}
+
+function renderSide() {
+  $("#plList").innerHTML = [`<li><button data-go="liked" class="${view.name === "liked" ? "on" : ""}">${likedThumb()}<span class="pl-meta"><b>Beğenilen Şarkılar</b><span>${S.liked.filter(id => tracks.has(id)).length} şarkı</span></span></button></li>`,
+    ...S.playlists.map(p => `<li><button data-go="pl:${p.id}" class="${view.name === "pl:" + p.id ? "on" : ""}">${plThumb(p)}<span class="pl-meta"><b>${esc(p.name)}</b><span>${plIds(p).length} şarkı</span></span></button></li>`)].join("");
+}
+
+function updatePlayer() {
+  const t = P.cur && tracks.get(P.cur);
+  $("#np").innerHTML = t ? `<img src="${coverOf(t)}" alt=""><div class="np-t"><b>${esc(t.title)}</b><small>${P.loading ? "Besteleniyor…" : esc(t.artist)}</small></div>
+    <button class="icon-btn like${isLiked(t.id) ? " on" : ""}" data-act="like" data-id="${t.id}" aria-label="${isLiked(t.id) ? "Beğenilerden çıkar" : "Beğen"}" style="${isLiked(t.id) ? "color:var(--accent)" : ""}">${icon(isLiked(t.id) ? "heart" : "heart-o")}</button>`
+    : `<div class="np-t"><b>Bir şarkı seç</b><small>Ya da çal tuşuna bas</small></div>`;
+  const pb = $("#playBtn");
+  pb.innerHTML = P.loading ? `<span class="spin"></span>` : icon(eng.paused ? "play" : "pause");
+  pb.setAttribute("aria-label", eng.paused ? "Çal" : "Duraklat");
+  $("#shufBtn").classList.toggle("on", S.shuffle);
+  const rb = $("#repBtn"); rb.classList.toggle("on", S.repeat > 0);
+  rb.innerHTML = icon("rep") + (S.repeat === 2 ? `<span class="rep1">1</span>` : "");
+  rb.title = ["Tekrarla", "Tümünü tekrarla", "Bu şarkıyı tekrarla"][S.repeat];
+  const dur = t ? (eng.duration || t.duration) : 0;
+  $("#tDur").textContent = fmt(dur);
+  if (!t) { $("#tCur").textContent = "0:00"; setRange($("#seek"), 0); }
+}
+function setRange(el, frac) { el.style.setProperty("--p", (frac * 100).toFixed(2) + "%"); }
+
+function renderQueue() {
+  const q = $("#queue"); if (q.hidden) return;
+  const t = P.cur && tracks.get(P.cur);
+  const row = (id, idx, kind) => { const x = tracks.get(id); return `<div class="qrow${kind === "cur" ? " cur" : ""}"><img src="${coverOf(x)}" alt=""><div class="qt" data-act="${kind === "cur" ? "toggle" : "q-jump"}" data-kind="${kind}" data-idx="${idx}" role="button" tabindex="0"><b>${esc(x.title)}</b><small>${esc(x.artist)}</small></div>${kind === "cur" ? "" : `<button class="icon-btn" data-act="q-remove" data-kind="${kind}" data-idx="${idx}" aria-label="Sıradan çıkar">${icon("x")}</button>`}</div>`; };
+  const up = upcomingIds(40);
+  const ctxLabel = P.ctxName.startsWith("pl:") ? (plById(P.ctxName.slice(3))?.name || "Liste") : P.ctxName.startsWith("search:") ? "Arama sonuçları" : P.ctxName.startsWith("lib:") ? "Kitaplığın" : P.ctxName === "yt" ? "YouTube şarkıların" : P.ctxName;
+  $("#queueBody").innerHTML = (t ? `<div><h3>Şimdi çalıyor</h3>${row(P.cur, 0, "cur")}</div>` : `<div class="empty"><b>Sıra boş</b>Bir şarkı çalmaya başla.</div>`)
+    + (P.manual.length ? `<div><h3>Sıradaki <button data-act="q-clear">Temizle</button></h3>${P.manual.map((id, i) => row(id, i, "manual")).join("")}</div>` : "")
+    + (up.length ? `<div><h3>Sonra: ${esc(ctxLabel)}</h3>${up.map((id, i) => row(id, i, "ctx")).join("")}</div>` : "");
+}
+
+/* ============ Menus, modals, toast ============ */
+const menu = $("#menu");
+let menuFor = null;
+function openMenu(btn, id) {
+  const t = tracks.get(id), tl = btn.closest(".tl"), plId = tl?.dataset.pl;
+  menuFor = id;
+  menu.innerHTML = `<button data-act="m-queue" data-id="${id}" role="menuitem">${icon("queue")}Sıraya ekle</button>
+    <button data-act="m-like" data-id="${id}" role="menuitem">${icon(isLiked(id) ? "heart" : "heart-o")}${isLiked(id) ? "Beğenilerden çıkar" : "Beğenilen Şarkılar'a ekle"}</button>
+    <hr><div class="lbl">Çalma listesine ekle</div>
+    ${S.playlists.map(p => `<button data-act="m-add" data-id="${id}" data-pl="${p.id}" role="menuitem">${icon(p.ids.includes(id) ? "heart" : "plus")}${esc(p.name)}</button>`).join("")}
+    <button data-act="m-newpl" data-id="${id}" role="menuitem">${icon("plus")}Yeni liste oluştur</button>
+    ${plId && plId !== "liked" ? `<hr><button data-act="m-rmpl" data-id="${id}" data-pl="${plId}" role="menuitem">${icon("x")}Bu listeden çıkar</button>` : ""}
+    ${t.kind === "local" ? `<hr><button data-act="m-delfile" data-id="${id}" role="menuitem" style="color:var(--danger)">${icon("x")}Dosyayı kitaplıktan sil</button>` : ""}
+    ${t.kind === "yt" ? `<hr><a class="menu-link" href="https://www.youtube.com/watch?v=${t.vid}" target="_blank" rel="noopener">${icon("yt")}YouTube'da aç</a><button data-act="m-delfile" data-id="${id}" role="menuitem" style="color:var(--danger)">${icon("x")}Kitaplıktan kaldır</button>` : ""}`;
+  menu.hidden = false;
+  const r = btn.getBoundingClientRect(), mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let x = Math.min(r.right - mw, innerWidth - mw - 12), y = r.bottom + 4;
+  if (y + mh > innerHeight - 12) y = Math.max(12, r.top - mh - 4);
+  menu.style.left = Math.max(12, x) + "px"; menu.style.top = y + "px";
+  menu.querySelector("button").focus();
+}
+function closeMenu() { menu.hidden = true; menuFor = null; }
+
+const scrim = $("#scrim");
+function modal(html, onOk) {
+  scrim.innerHTML = `<form class="modal" id="mform">${html}</form>`;
+  scrim.hidden = false;
+  const f = $("#mform"), inp = f.querySelector("input");
+  (inp || f.querySelector(".solid")).focus(); if (inp) inp.select();
+  f.onsubmit = e => { e.preventDefault(); if (onOk(inp ? inp.value.trim() : true) !== false) closeModal(); };
+  f.querySelector("[data-cancel]").onclick = closeModal;
+}
+function closeModal() { scrim.hidden = true; scrim.innerHTML = ""; }
+function newPlaylist(withTrack) {
+  modal(`<h2>Yeni çalma listesi</h2><input id="plName" maxlength="60" value="Listem #${S.playlists.length + 1}" aria-label="Liste adı"><div class="row-btns"><button type="button" class="ghost" data-cancel>Vazgeç</button><button class="solid">Oluştur</button></div>`, name => {
+    if (!name) return false;
+    const p = { id: "pl-" + Date.now().toString(36), name, ids: withTrack ? [withTrack] : [], desc: "" };
+    S.playlists.push(p); save();
+    toast(withTrack ? `"${name}" oluşturuldu, şarkı eklendi` : `"${name}" oluşturuldu`);
+    if (!withTrack) go("pl:" + p.id); else render(false);
+  });
+}
+
+let toastT;
+function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("show"), 2400); }
+
+function toggleLike(id) {
+  const i = S.liked.indexOf(id);
+  if (i >= 0) S.liked.splice(i, 1); else S.liked.unshift(id);
+  save(); toast(i >= 0 ? "Beğenilenlerden çıkarıldı" : "Beğenilen Şarkılar'a eklendi");
+  render(false); updatePlayer();
+}
+
+function go(name) {
+  view = { name }; closeMenu();
+  render(); $("#main").scrollTop = 0;
+  if (name === "search") setTimeout(() => $("#q")?.focus(), 0);
+  if (name === "yt") setTimeout(() => $("#ytUrl")?.focus(), 0);
+}
+
+/* ============ Events ============ */
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-go],[data-genre],[data-chip],[data-lib]");
+  if (!menu.hidden && !e.target.closest("#menu") && !(el && el.dataset.act === "more")) closeMenu();
+  if (!el) return;
+  if (el.dataset.go && !el.dataset.act) return go(el.dataset.go);
+  if (el.dataset.genre) { searchGenre = el.dataset.genre; searchQ = ""; return go("search"); }
+  if (el.dataset.chip) { searchGenre = searchGenre === el.dataset.chip ? "" : el.dataset.chip; return render(false); }
+  if (el.dataset.lib) { libTab = el.dataset.lib; return render(false); }
+  const a = el.dataset.act, id = el.dataset.id;
+  e.stopPropagation();
+  switch (a) {
+    case "toggle": return toggle();
+    case "next": return next();
+    case "prev": return prev();
+    case "shuffle":
+      S.shuffle = !S.shuffle; save();
+      if (P.ctx.length && P.pos >= 0) buildOrder(P.order[P.pos]);
+      toast(S.shuffle ? "Karıştırma açık" : "Karıştırma kapalı");
+      updatePlayer(); renderQueue(); return render(false);
+    case "repeat":
+      S.repeat = (S.repeat + 1) % 3; save();
+      toast(["Tekrar kapalı", "Tümünü tekrarla", "Bu şarkıyı tekrarla"][S.repeat]);
+      updatePlayer(); return renderQueue();
+    case "mute": eng.muted = !eng.muted; return syncVol();
+    case "toggle-queue": { const q = $("#queue"); q.hidden = !q.hidden; $("#queueBtn").classList.toggle("on", !q.hidden); document.body.classList.toggle("queue-open", !q.hidden); return renderQueue(); }
+    case "play-ctx": { const ids = (el.dataset.ids || "").split(",").filter(Boolean); if (!ids.length) return toast("Bu listede çalacak şarkı yok"); return playOrToggle(ids, el.dataset.start, el.dataset.name); }
+    case "row-play": { const row = el.closest("[data-row]"), tl = el.closest(".tl"); const rid = row.dataset.row; if (P.cur === rid && P.ctxName === tl.dataset.ctx) return toggle(); return playContext(tl.dataset.ids.split(","), rid, tl.dataset.ctx); }
+    case "like": return toggleLike(id);
+    case "more": return menuFor === id && !menu.hidden ? closeMenu() : openMenu(el, id);
+    case "m-queue": P.manual.push(id); closeMenu(); toast("Sıraya eklendi"); if (!P.cur) next(); renderQueue(); return prefetch();
+    case "m-like": closeMenu(); return toggleLike(id);
+    case "m-add": { const p = plById(el.dataset.pl); closeMenu(); if (p.ids.includes(id)) return toast(`Zaten "${p.name}" listesinde`); p.ids.push(id); save(); toast(`"${p.name}" listesine eklendi`); return render(false); }
+    case "m-newpl": closeMenu(); return newPlaylist(id);
+    case "m-rmpl": { const p = plById(el.dataset.pl); p.ids = p.ids.filter(x => x !== id); save(); closeMenu(); toast(`"${p.name}" listesinden çıkarıldı`); return render(false); }
+    case "m-delfile": {
+      closeMenu(); const t = tracks.get(id);
+      return modal(`<h2>${t.kind === "yt" ? "Kitaplıktan kaldır" : "Dosyayı sil"}</h2><p>"${esc(t.title)}" bu tarayıcıdaki kitaplığından ${t.kind === "yt" ? "kaldırılacak. YouTube'daki videoya bir şey olmaz." : "silinecek. Bilgisayarındaki asıl dosyaya dokunulmaz."}</p><div class="row-btns"><button type="button" class="ghost" data-cancel>Vazgeç</button><button class="solid danger">Sil</button></div>`, () => {
+        if (t.kind === "yt") { tracks.delete(id); saveYT(); } else { dbDel(id); tracks.delete(id); }
+        if (urlCache.has(id)) { URL.revokeObjectURL(urlCache.get(id)); urlCache.delete(id); }
+        P.manual = P.manual.filter(x => x !== id);
+        if (P.cur === id) { eng.pause(); audio.removeAttribute("src"); showVideo(false); eng.mode = "audio"; P.cur = null; }
+        S.liked = S.liked.filter(x => x !== id); S.playlists.forEach(p => p.ids = p.ids.filter(x => x !== id)); save();
+        toast("Dosya silindi"); updatePlayer(); render(false); renderQueue();
+      });
+    }
+    case "new-pl": return newPlaylist();
+    case "rename-pl": { const p = plById(id); return modal(`<h2>Listeyi yeniden adlandır</h2><input id="plName" maxlength="60" value="${esc(p.name)}" aria-label="Liste adı"><div class="row-btns"><button type="button" class="ghost" data-cancel>Vazgeç</button><button class="solid">Kaydet</button></div>`, name => { if (!name) return false; p.name = name; save(); render(false); }); }
+    case "del-pl": { const p = plById(id); return modal(`<h2>"${esc(p.name)}" silinsin mi?</h2><p>Liste silinir, içindeki şarkılar kitaplığında kalır.</p><div class="row-btns"><button type="button" class="ghost" data-cancel>Vazgeç</button><button class="solid danger">Listeyi sil</button></div>`, () => { S.playlists = S.playlists.filter(x => x !== p); save(); toast("Liste silindi"); go("home"); }); }
+    case "q-jump": {
+      const idx = +el.dataset.idx;
+      if (el.dataset.kind === "manual") { const [x] = P.manual.splice(idx, 1); P.fromManual = true; return load(x); }
+      const steps = idx + 1; let pos = P.pos + steps; if (pos >= P.order.length) pos -= P.order.length;
+      P.pos = pos; P.fromManual = false; return load(P.ctx[P.order[P.pos]]);
+    }
+    case "q-remove": {
+      const idx = +el.dataset.idx;
+      if (el.dataset.kind === "manual") P.manual.splice(idx, 1);
+      else { let k = P.pos + 1 + idx; if (k >= P.order.length) { k -= P.order.length; P.order.splice(k, 1); P.pos--; } else P.order.splice(k, 1); }
+      return renderQueue();
+    }
+    case "install": if (installEvt) { installEvt.prompt(); installEvt = null; el.hidden = true; } return;
+    case "q-clear": P.manual = []; return renderQueue();
+    case "yt-play": { const r = ytResults.find(x => x.vid === el.dataset.vid); const tid = addYT(r.vid, r); render(false); return playContext(ytTrackIds(), tid, "yt"); }
+    case "yt-add": { const r = ytResults.find(x => x.vid === el.dataset.vid); if (tracks.has("yt-" + r.vid)) return toast("Zaten kitaplığında"); addYT(r.vid, r); toast("YouTube şarkıların arasına eklendi"); return render(false); }
+    case "yt-forget-key": S.ytKey = ""; ytResults = []; save(); return render(false);
+    case "yt-search-from": ytResults = []; go("yt"); return ytSearch(el.dataset.q);
+  }
+});
+// Phones have no hover or double-click: a tap on the row plays it
+document.addEventListener("click", e => {
+  if (!matchMedia("(max-width: 760px)").matches) return;
+  const row = e.target.closest("[data-row]"); if (!row || e.target.closest("button,a")) return;
+  const tl = row.closest(".tl"), rid = row.dataset.row;
+  if (P.cur === rid && P.ctxName === tl.dataset.ctx) return toggle();
+  playContext(tl.dataset.ids.split(","), rid, tl.dataset.ctx);
+});
+document.addEventListener("dblclick", e => { const row = e.target.closest("[data-row]"); if (!row || e.target.closest("button")) return; const tl = row.closest(".tl"); playContext(tl.dataset.ids.split(","), row.dataset.row, tl.dataset.ctx); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { if (!scrim.hidden) return closeModal(); if (!menu.hidden) return closeMenu(); }
+  if (e.target.closest("input,textarea,select,[contenteditable]")) return;
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("[role=button]")) { e.preventDefault(); e.target.click(); return; }
+  if (e.code === "Space" && !e.target.closest("button")) { e.preventDefault(); toggle(); }
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === "ArrowRight" && e.shiftKey) next();
+  if (e.key === "ArrowLeft" && e.shiftKey) prev();
+});
+document.addEventListener("input", e => {
+  if (e.target.id === "q") { searchQ = e.target.value; render(false); }
+});
+document.addEventListener("submit", e => {
+  const f = e.target;
+  if (f.id === "ytAddForm") { e.preventDefault(); const v = $("#ytUrl").value; $("#ytUrl").value = ""; $("#ytUrl").blur(); handleYTInput(v); }
+  if (f.id === "ytSearchForm") { e.preventDefault(); $("#ytQ").blur(); ytSearch($("#ytQ").value); }
+  if (f.id === "ytKeyForm") { e.preventDefault(); const k = $("#ytKey").value.trim(); if (!/^[\w-]{30,}$/.test(k)) return toast("Bu bir API anahtarına benzemiyor"); S.ytKey = k; save(); toast("Anahtar kaydedildi, artık arayabilirsin"); render(); }
+});
+scrim.addEventListener("click", e => { if (e.target === scrim) closeModal(); });
+$("#fileIn").addEventListener("change", e => { importFiles(e.target.files); e.target.value = ""; });
+document.addEventListener("dragover", e => { if (![...(e.dataTransfer?.types || [])].includes("Files")) return; e.preventDefault(); document.querySelectorAll("[data-drop]").forEach(d => d.classList.add("over")); });
+document.addEventListener("dragleave", e => { if (e.relatedTarget) return; document.querySelectorAll("[data-drop]").forEach(d => d.classList.remove("over")); });
+document.addEventListener("drop", e => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); document.querySelectorAll("[data-drop]").forEach(d => d.classList.remove("over")); importFiles(e.dataTransfer.files); });
+
+const seek = $("#seek"), vol = $("#vol");
+let seeking = false;
+seek.addEventListener("input", () => { seeking = true; const d = eng.duration || 0; setRange(seek, seek.value / 1000); $("#tCur").textContent = fmt(d * seek.value / 1000); });
+seek.addEventListener("change", () => { if (eng.duration) eng.currentTime = eng.duration * seek.value / 1000; seeking = false; });
+function onTime() {
+  if (seeking) return; const d = eng.duration || 0, f = d ? eng.currentTime / d : 0;
+  seek.value = Math.round(f * 1000); setRange(seek, f); $("#tCur").textContent = fmt(eng.currentTime);
+}
+audio.addEventListener("timeupdate", onTime);
+audio.addEventListener("loadedmetadata", () => { $("#tDur").textContent = fmt(audio.duration); });
+audio.addEventListener("ended", () => next(true));
+["play", "pause"].forEach(ev => audio.addEventListener(ev, () => { if (eng.mode === "audio") { updatePlayer(); render(false); renderQueue(); } }));
+function syncVol() {
+  eng.setVolume(S.vol); vol.value = Math.round(S.vol * 100); setRange(vol, eng.muted ? 0 : S.vol);
+  $("#muteBtn").innerHTML = icon(eng.muted || S.vol === 0 ? "mute" : "vol");
+}
+vol.addEventListener("input", () => { S.vol = vol.value / 100; eng.muted = false; syncVol(); save(); });
+
+/* ============ Boot ============ */
+if (!/BelesifyApp/.test(navigator.userAgent) && "serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("#installBtn").hidden = false; if (view.name === "home") render(false); });
+window.addEventListener("appinstalled", () => { $("#installBtn").hidden = true; toast("Beleşify kuruldu"); });
+syncVol();
+updatePlayer();
+render();
+(document.fonts?.ready || Promise.resolve()).then(() => {
+  STUDIO.forEach(d => { delete tracks.get(d.id).cover; });
+  render(false); updatePlayer();
+});
+openDB().then(dbAll).then(recs => {
+  if (!recs.length) return;
+  recs.sort((a, b) => a.added - b.added).forEach(addLocalRecord);
+  render(false);
+});
+</script>
+</body>
+</html>

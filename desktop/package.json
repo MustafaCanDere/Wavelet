@@ -1,0 +1,59 @@
+{
+  "name": "belesify",
+  "productName": "Beleşify",
+  "version": "1.0.0",
+  "description": "Beleşify müzik çalar",
+  "author": "Beleşify",
+  "main": "main.js",
+  "build": {
+    "appId": "app.belesify",
+    "productName": "Beleşify",
+    "files": [
+      "main.js",
+      "web/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Beleşify",
+      "artifactName": "Belesify-Kurulum-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "Belesify-Tasinabilir-${version}.exe"
+    }
+  },
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "prestart": "node copy-web.js",
+    "prebuild:win": "node copy-web.js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}

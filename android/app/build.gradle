@@ -1,0 +1,45 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "app.belesify"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "app.belesify"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        // Set BELESIFY_KEYSTORE (+ passwords) in CI to sign releases with a stable key; otherwise the debug key is used.
+        release {
+            def ks = System.getenv("BELESIFY_KEYSTORE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("BELESIFY_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("BELESIFY_KEY_ALIAS")
+                keyPassword System.getenv("BELESIFY_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv("BELESIFY_KEYSTORE") ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main { assets.srcDirs = ["../../web"] }
+    }
+}
