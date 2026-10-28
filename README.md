@@ -3,6 +3,7 @@
 Ücretsiz bir müzik çalar. Windows ve Android'de uygulama olarak çalışır.
 
 - **YouTube:** Video ya da oynatma listesi bağlantısını yapıştır, YouTube'un resmi oynatıcısıyla çalsın. Video küçük bir pencerede görünür kalır (YouTube kuralları). Arama için kendi ücretsiz YouTube Data API anahtarını uygulamaya girebilirsin.
+- **Senin için:** Wavelet sonuna kadar dinlediğin, atladığın, beğendiğin ve listelere eklediğin şarkılardan bir zevk profili çıkarır. En sevdiğin şarkıların YouTube Mix listelerini toplar; birden fazla sevdiğin şarkının karışımında çıkan, sevdiğin sanatçılara ve kelimelere yakın şarkıları öne alır; dinlediklerini, atladıklarını ve "Bunu önerme" dediklerini eler; aynı sanatçıdan en fazla iki şarkı koyar. API anahtarı girersen sevdiğin sanatçı ve türleri de arar. Sıra bitince benzer şarkılarla kendiliğinden devam eder. Her şey cihazında hesaplanır, hiçbir yere gönderilmez.
 - **Kendi dosyaların:** MP3, M4A, OGG, WAV, FLAC. Dosyalar sadece cihazında kalır.
 - **Wavelet Stüdyo:** Uygulamanın içinde, kodla bestelenen 12 özgün parça (lo-fi, synthwave, house, ambient, chiptune, Hicaz makamı).
 - Çalma listeleri, beğenilenler, sıra, karıştırma, tekrar, arama.
@@ -29,7 +30,7 @@ android/   Android uygulaması (WebView). Uygulamayı https://appassets.androidp
 
 ## Derleme
 
-GitHub Actions her `main` push'unda `.exe` ve `.apk` derler (Actions sekmesinde "Artifacts"). Her başarılı derleme dosyaları otomatik olarak yeni bir Release olarak yayınlar (`v1.2.<derleme no>`). İstersen `v` ile başlayan bir etiket de gönderebilirsin.
+GitHub Actions her `main` push'unda `.exe` ve `.apk` derler (Actions sekmesinde "Artifacts"). Her başarılı derleme dosyaları otomatik olarak yeni bir Release olarak yayınlar (`v1.3.<derleme no>`). İstersen `v` ile başlayan bir etiket de gönderebilirsin.
 
 Kendi bilgisayarında:
 

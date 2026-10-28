@@ -102,6 +102,20 @@ h2 { font-size: 22px; font-weight: 800; }
 .card-art img { width: 100%; aspect-ratio: 1; border-radius: 8px; display: block; box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
 .card .fab { position: absolute; right: 8px; bottom: 8px; opacity: 0; transform: translateY(6px); transition: opacity .15s, transform .15s; }
 .card:hover .fab, .card:focus-within .fab, .card.playing .fab { opacity: 1; transform: none; }
+.card-x { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(4,8,20,.7); color: #fff; display: grid; place-items: center; opacity: 0; transition: opacity .15s; }
+.card-x svg { width: 16px; height: 16px; }
+.card:hover .card-x, .card:focus-within .card-x { opacity: 1; }
+.rec-status { display: flex; align-items: center; gap: 10px; color: var(--mute); font-size: 13px; }
+.rec-status .spin { width: 14px; height: 14px; color: var(--accent); }
+.onboard { display: flex; flex-direction: column; gap: 14px; background: linear-gradient(135deg, rgba(79,140,255,.16), rgba(57,213,255,.06)); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+.onboard p { margin: 0; color: var(--mute); line-height: 1.5; max-width: 70ch; }
+.onboard b { color: var(--fg); }
+.switch { display: inline-flex; align-items: center; gap: 8px; color: var(--mute); font-size: 13px; font-weight: 600; }
+.switch i { width: 30px; height: 18px; border-radius: 999px; background: var(--hover); position: relative; transition: background .15s; }
+.switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--fg); transition: transform .15s; }
+.switch.on i { background: var(--accent); }
+.switch.on i::after { transform: translateX(12px); }
+@media (max-width: 760px) { .card-x { opacity: 1; width: 24px; height: 24px; } }
 .card b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card small { color: var(--mute); font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .fab { width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
@@ -770,7 +784,7 @@ function onYTState(e) {
   if (eng.mode !== "yt") return;
   if (ytState === 1 || ytState === 2) P.loading = false;
   if (ytState === 1) fillYTMeta();
-  if (ytState === 0) return next(true);
+  if (ytState === 0) { commitListen(true); return next(true); }
   updatePlayer(); render(false); renderQueue();
 }
 function onYTError(e) {
@@ -795,7 +809,7 @@ function addYTRecord(r) {
   tracks.set("yt-" + r.vid, { id: "yt-" + r.vid, vid: r.vid, title: r.title || "YouTube videosu", artist: r.artist || "YouTube", genre: "YouTube", kind: "yt", duration: r.duration || 0, placeholder: !r.title, cover: ytThumb(r.vid) });
 }
 function saveYT() {
-  S.yt = [...tracks.values()].filter(t => t.kind === "yt").map(t => ({ vid: t.vid, title: t.placeholder ? "" : t.title, artist: t.artist, duration: Math.round(t.duration || 0) }));
+  S.yt = [...tracks.values()].filter(t => t.kind === "yt" && !t.rec).map(t => ({ vid: t.vid, title: t.placeholder ? "" : t.title, artist: t.artist, duration: Math.round(t.duration || 0) }));
   save();
 }
 function addYT(vid, meta) {
@@ -861,7 +875,7 @@ async function importYTPlaylist(list) {
       page = j.nextPageToken; if (!page) break;
     }
   } else {
-    const ids = await probePlaylist(list);
+    const ids = await probeList(list);
     items = ids.map(vid => ({ vid }));
   }
   if (!items.length) throw new Error("empty");
@@ -883,7 +897,8 @@ async function handleYTInput(str) {
   render(false);
   playContext(ytTrackIds(), id, "yt");
 }
-const ytTrackIds = () => [...tracks.values()].filter(t => t.kind === "yt").map(t => t.id);
+const ytTrackIds = () => [...tracks.values()].filter(t => t.kind === "yt" && !t.rec).map(t => t.id);
+const libTracks = () => [...tracks.values()].filter(t => !t.rec);
 async function ytSearch(q) {
   ytQuery = q; if (!q.trim() || !S.ytKey) return render(false);
   ytBusy = true; render(false);
@@ -990,6 +1005,8 @@ function playContext(ids, startId, name) {
 async function load(id, autoplay = true) {
   const t = tracks.get(id); if (!t) return;
   const my = ++P.token;
+  if (L.id !== id) commitListen(false);
+  startListen(id);
   eng.pause();
   P.cur = id; P.loading = t.kind === "gen" && !urlCache.has(id);
   if (t.kind === "yt") {
@@ -1035,13 +1052,17 @@ function prefetch() {
 }
 
 function next(auto = false) {
-  if (auto && S.repeat === 2 && P.cur) { eng.currentTime = 0; eng.play(); return; }
+  if (auto && S.repeat === 2 && P.cur) { startListen(P.cur); eng.currentTime = 0; eng.play(); return; }
   if (P.manual.length) { P.fromManual = true; return load(P.manual.shift()); }
   P.fromManual = false;
   if (!P.order.length) return;
   if (P.pos + 1 < P.order.length) P.pos++;
   else if (S.repeat === 1) { if (S.shuffle) buildOrder(-1); P.pos = 0; }
-  else { if (auto) { eng.pause(); eng.currentTime = 0; P.pos = 0; return load(P.ctx[P.order[0]], false); } return; }
+  else {
+    const stop = () => { if (auto) { eng.pause(); eng.currentTime = 0; P.pos = 0; load(P.ctx[P.order[0]], false); } };
+    if (S.autoplay !== false && !P.ctxName.startsWith("rec:radio-wait")) { startRadio().then(ok => ok || stop()); return; }
+    return stop();
+  }
   load(P.ctx[P.order[P.pos]]);
 }
 function prev() {
@@ -1117,12 +1138,12 @@ function trackList(ids, ctxName, opts = {}) {
     <div class="tl-head"><span style="text-align:center">#</span><span>Başlık</span><span class="g">Tür</span><span></span><span style="text-align:right">Süre</span><span></span></div>${rows}</div>`;
 }
 
-function card(t, ctxIds, ctxName) {
+function card(t, ctxIds, ctxName, opts = {}) {
   const active = P.cur === t.id && P.ctxName === ctxName;
   return `<div class="card${active && playing() ? " playing" : ""}" data-open-track="${t.id}">
-    <div class="card-art"><img src="${coverOf(t)}" alt="">
+    <div class="card-art"><img src="${coverOf(t)}" alt="">${opts.dismiss ? `<button class="card-x" data-act="rec-hide" data-id="${t.id}" aria-label="Bunu önerme" title="Bunu önerme">${icon("x")}</button>` : ""}
       <button class="fab" data-act="play-ctx" data-ids="${ctxIds.join(",")}" data-start="${t.id}" data-name="${esc(ctxName)}" aria-label="${esc(t.title)} çal">${playIcon(active)}</button></div>
-    <b>${esc(t.title)}</b><small>${esc(t.artist)} · ${esc(t.genre)}</small></div>`;
+    <b>${esc(t.title)}</b><small>${esc(t.artist)} · ${esc(t.rec && t.why ? t.why : t.genre)}</small></div>`;
 }
 
 function greeting() { const h = new Date().getHours(); return h < 6 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "Tünaydın" : "İyi akşamlar"; }
@@ -1139,6 +1160,7 @@ function viewHome() {
     <div><h1>${greeting()}</h1><p class="lede">Abonelik yok. YouTube'daki şarkıları bağlantısını yapıştırarak ekle, kendi müzik dosyalarını bırak ya da tarayıcında bestelenen Wavelet Stüdyo parçalarını dinle.</p></div>
     ${installEvt ? `<button class="ghost" data-act="install" style="align-self:flex-start">${icon("upload")} Wavelet'i bu cihaza kur</button>` : ""}
     <div class="quick">${qt.join("")}</div>
+    ${recSections()}
     <section class="sec"><div class="sec-head"><h2>YouTube'dan</h2><button class="ghost" data-go="yt">Şarkı ekle</button></div>
       <div class="cards">${ytTrackIds().slice(0, 8).map(id => card(tracks.get(id), ytTrackIds(), "yt")).join("")}</div></section>
     <section class="sec"><div class="sec-head"><h2>Wavelet Stüdyo'dan</h2><p>${STUDIO.length} özgün parça</p></div>
@@ -1159,7 +1181,7 @@ function dropZone() {
 
 function viewSearch() {
   const q = searchQ.trim().toLocaleLowerCase("tr");
-  const all = [...tracks.values()];
+  const all = libTracks();
   let res = all;
   if (searchGenre) res = res.filter(t => t.genre === searchGenre);
   if (q) res = res.filter(t => (t.title + " " + t.artist + " " + t.genre).toLocaleLowerCase("tr").includes(q));
@@ -1197,7 +1219,7 @@ function viewYT() {
 }
 
 function viewLibrary() {
-  const all = [...tracks.values()];
+  const all = libTracks();
   const list = libTab === "files" ? all.filter(t => t.kind === "local") : libTab === "studio" ? all.filter(t => t.kind === "gen") : libTab === "yt" ? all.filter(t => t.kind === "yt") : all;
   const locals = all.filter(t => t.kind === "local").length;
   return `<div class="view">
@@ -1284,7 +1306,7 @@ function renderQueue() {
   const t = P.cur && tracks.get(P.cur);
   const row = (id, idx, kind) => { const x = tracks.get(id); return `<div class="qrow${kind === "cur" ? " cur" : ""}"><img src="${coverOf(x)}" alt=""><div class="qt" data-act="${kind === "cur" ? "toggle" : "q-jump"}" data-kind="${kind}" data-idx="${idx}" role="button" tabindex="0"><b>${esc(x.title)}</b><small>${esc(x.artist)}</small></div>${kind === "cur" ? "" : `<button class="icon-btn" data-act="q-remove" data-kind="${kind}" data-idx="${idx}" aria-label="Sıradan çıkar">${icon("x")}</button>`}</div>`; };
   const up = upcomingIds(40);
-  const ctxLabel = P.ctxName.startsWith("pl:") ? (plById(P.ctxName.slice(3))?.name || "Liste") : P.ctxName.startsWith("search:") ? "Arama sonuçları" : P.ctxName.startsWith("lib:") ? "Kitaplığın" : P.ctxName === "yt" ? "YouTube şarkıların" : P.ctxName;
+  const ctxLabel = P.ctxName.startsWith("pl:") ? (plById(P.ctxName.slice(3))?.name || "Liste") : P.ctxName.startsWith("search:") ? "Arama sonuçları" : P.ctxName.startsWith("lib:") ? "Kitaplığın" : P.ctxName === "yt" ? "YouTube şarkıların" : P.ctxName.startsWith("rec:radio") ? "Benzer şarkılar" : P.ctxName.startsWith("rec:") ? "Senin için" : P.ctxName;
   $("#queueBody").innerHTML = (t ? `<div><h3>Şimdi çalıyor</h3>${row(P.cur, 0, "cur")}</div>` : `<div class="empty"><b>Sıra boş</b>Bir şarkı çalmaya başla.</div>`)
     + (P.manual.length ? `<div><h3>Sıradaki <button data-act="q-clear">Temizle</button></h3>${P.manual.map((id, i) => row(id, i, "manual")).join("")}</div>` : "")
     + (up.length ? `<div><h3>Sonra: ${esc(ctxLabel)}</h3>${up.map((id, i) => row(id, i, "ctx")).join("")}</div>` : "");
@@ -1302,6 +1324,7 @@ function openMenu(btn, id) {
     ${S.playlists.map(p => `<button data-act="m-add" data-id="${id}" data-pl="${p.id}" role="menuitem">${icon(p.ids.includes(id) ? "heart" : "plus")}${esc(p.name)}</button>`).join("")}
     <button data-act="m-newpl" data-id="${id}" role="menuitem">${icon("plus")}Yeni liste oluştur</button>
     ${plId && plId !== "liked" ? `<hr><button data-act="m-rmpl" data-id="${id}" data-pl="${plId}" role="menuitem">${icon("x")}Bu listeden çıkar</button>` : ""}
+    ${t.rec ? `<hr><button data-act="m-keep" data-id="${id}" role="menuitem">${icon("plus")}Kitaplığa ekle</button><button data-act="rec-hide" data-id="${id}" role="menuitem">${icon("x")}Bunu önerme</button>` : ""}
     ${t.kind === "local" ? `<hr><button data-act="m-delfile" data-id="${id}" role="menuitem" style="color:var(--danger)">${icon("x")}Dosyayı kitaplıktan sil</button>` : ""}
     ${t.kind === "yt" ? `<hr><a class="menu-link" href="https://www.youtube.com/watch?v=${t.vid}" target="_blank" rel="noopener">${icon("yt")}YouTube'da aç</a><button data-act="m-delfile" data-id="${id}" role="menuitem" style="color:var(--danger)">${icon("x")}Kitaplıktan kaldır</button>` : ""}`;
   menu.hidden = false;
@@ -1337,6 +1360,7 @@ let toastT;
 function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("show"), 2400); }
 
 function toggleLike(id) {
+  promote(id); recSignal(2);
   const i = S.liked.indexOf(id);
   if (i >= 0) S.liked.splice(i, 1); else S.liked.unshift(id);
   save(); toast(i >= 0 ? "Beğenilenlerden çıkarıldı" : "Beğenilen Şarkılar'a eklendi");
@@ -1382,7 +1406,7 @@ document.addEventListener("click", e => {
     case "more": return menuFor === id && !menu.hidden ? closeMenu() : openMenu(el, id);
     case "m-queue": P.manual.push(id); closeMenu(); toast("Sıraya eklendi"); if (!P.cur) next(); renderQueue(); return prefetch();
     case "m-like": closeMenu(); return toggleLike(id);
-    case "m-add": { const p = plById(el.dataset.pl); closeMenu(); if (p.ids.includes(id)) return toast(`Zaten "${p.name}" listesinde`); p.ids.push(id); save(); toast(`"${p.name}" listesine eklendi`); return render(false); }
+    case "m-add": { const p = plById(el.dataset.pl); closeMenu(); promote(id); recSignal(1); if (p.ids.includes(id)) return toast(`Zaten "${p.name}" listesinde`); p.ids.push(id); save(); toast(`"${p.name}" listesine eklendi`); return render(false); }
     case "m-newpl": closeMenu(); return newPlaylist(id);
     case "m-rmpl": { const p = plById(el.dataset.pl); p.ids = p.ids.filter(x => x !== id); save(); closeMenu(); toast(`"${p.name}" listesinden çıkarıldı`); return render(false); }
     case "m-delfile": {
@@ -1413,6 +1437,11 @@ document.addEventListener("click", e => {
     }
     case "install": if (installEvt) { installEvt.prompt(); installEvt = null; el.hidden = true; } return;
     case "q-clear": P.manual = []; return renderQueue();
+    case "m-keep": closeMenu(); promote(id); toast("Kitaplığına eklendi"); return render(false);
+    case "rec-hide": closeMenu(); return hideRec(id);
+    case "rec-refresh": return recompute(true);
+    case "rec-autoplay": S.autoplay = S.autoplay === false; save(); toast(S.autoplay ? "Sıra bitince benzer şarkılarla devam edecek" : "Otomatik devam kapalı"); return render(false);
+    case "rec-taste": { const g = el.dataset.g, i = S.tasteGenres.indexOf(g); i >= 0 ? S.tasteGenres.splice(i, 1) : S.tasteGenres.push(g); save(); render(false); clearTimeout(recTimer); recTimer = setTimeout(() => recompute(false), 1500); return; }
     case "yt-play": { const r = ytResults.find(x => x.vid === el.dataset.vid); const tid = addYT(r.vid, r); render(false); return playContext(ytTrackIds(), tid, "yt"); }
     case "yt-add": { const r = ytResults.find(x => x.vid === el.dataset.vid); if (tracks.has("yt-" + r.vid)) return toast("Zaten kitaplığında"); addYT(r.vid, r); toast("YouTube şarkıların arasına eklendi"); return render(false); }
     case "yt-forget-key": S.ytKey = ""; ytResults = []; save(); return render(false);
@@ -1442,6 +1471,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("submit", e => {
   const f = e.target;
+  if (f.id === "recSeedForm") { e.preventDefault(); const v = $("#recSeed").value; $("#recSeed").value = ""; seedFromLink(v); }
   if (f.id === "ytAddForm") { e.preventDefault(); const v = $("#ytUrl").value; $("#ytUrl").value = ""; $("#ytUrl").blur(); handleYTInput(v); }
   if (f.id === "ytSearchForm") { e.preventDefault(); $("#ytQ").blur(); ytSearch($("#ytQ").value); }
   if (f.id === "ytKeyForm") { e.preventDefault(); const k = $("#ytKey").value.trim(); if (!/^[\w-]{30,}$/.test(k)) return toast("Bu bir API anahtarına benzemiyor"); S.ytKey = k; save(); toast("Anahtar kaydedildi, artık arayabilirsin"); render(); }
@@ -1457,18 +1487,252 @@ let seeking = false;
 seek.addEventListener("input", () => { seeking = true; const d = eng.duration || 0; setRange(seek, seek.value / 1000); $("#tCur").textContent = fmt(d * seek.value / 1000); });
 seek.addEventListener("change", () => { if (eng.duration) eng.currentTime = eng.duration * seek.value / 1000; seeking = false; });
 function onTime() {
+  listenTick();
   if (seeking) return; const d = eng.duration || 0, f = d ? eng.currentTime / d : 0;
   seek.value = Math.round(f * 1000); setRange(seek, f); $("#tCur").textContent = fmt(eng.currentTime);
 }
 audio.addEventListener("timeupdate", onTime);
 audio.addEventListener("loadedmetadata", () => { $("#tDur").textContent = fmt(audio.duration); });
-audio.addEventListener("ended", () => next(true));
+audio.addEventListener("ended", () => { commitListen(true); next(true); });
 ["play", "pause"].forEach(ev => audio.addEventListener(ev, () => { if (eng.mode === "audio") { updatePlayer(); render(false); renderQueue(); } }));
 function syncVol() {
   eng.setVolume(S.vol); vol.value = Math.round(S.vol * 100); setRange(vol, eng.muted ? 0 : S.vol);
   $("#muteBtn").innerHTML = icon(eng.muted || S.vol === 0 ? "mute" : "vol");
 }
 vol.addEventListener("input", () => { S.vol = vol.value / 100; eng.muted = false; syncVol(); save(); });
+
+
+/* ============ Recommendations ============
+   Taste profile from local listening signals (full plays, skips, likes, playlist adds; 3-week half-life),
+   candidates from YouTube Mix playlists of the top seed songs (no API key needed) plus, with a key,
+   searches for favourite artists and genres. Candidates are scored by how many seeds point at them and how
+   high, nudged by artist/keyword affinity, filtered (already known, skipped, hidden, junk), and diversified. */
+S.hist = S.hist || {}; S.hidden = S.hidden || []; S.disArtists = S.disArtists || []; S.disCount = S.disCount || {};
+S.tasteGenres = S.tasteGenres || []; S.recs = S.recs || null;
+const L = { id: null, secs: 0, tick: 0 };
+let recBusy = false, recTimer = 0, recSignals = 0, probeChain = Promise.resolve();
+const DAY = 864e5;
+const REC_STOP = new Set("official video audio lyrics lyric klip clip music müzik muzik hd 4k remastered remaster feat featuring the and ile live canlı version versiyon prod topic resmi şarkı sözleri edit original".split(" "));
+const JUNK = /(reaction|tepki|tutorial|nasıl yapılır|podcast|trailer|fragman|unboxing|inceleme|gameplay|#shorts)/i;
+const GENRE_QUERY = { "Türkçe Pop": "türkçe pop şarkılar", "Türkçe Rap": "türkçe rap", "Anadolu Rock": "anadolu rock", "Rock": "rock songs", "Arabesk": "arabesk şarkılar", "Lo-fi": "lofi hip hop", "Elektronik": "electronic music", "Jazz": "jazz music", "Klasik": "classical music", "Metal": "metal songs", "R&B": "r&b songs", "K-Pop": "kpop songs", "Synthwave": "synthwave", "House": "house music", "Ambient": "ambient music", "Chiptune": "chiptune music", "Makam Elektronik": "oriental electronic music" };
+const TASTE_CHOICES = ["Türkçe Pop", "Türkçe Rap", "Anadolu Rock", "Arabesk", "Rock", "Metal", "Lo-fi", "Elektronik", "Jazz", "R&B", "K-Pop", "Klasik"];
+const normArtist = a => (a || "").replace(/\s*-\s*topic$/i, "").replace(/vevo$/i, "").replace(/\s+(official|resmi)$/i, "").trim().toLocaleLowerCase("tr");
+const words = s => (s || "").toLocaleLowerCase("tr").replace(/[()\[\]|_"'“”.,!?:;/\\#@&+*~-]/g, " ").split(/\s+/).filter(w => w.length > 2 && !REC_STOP.has(w) && !/^\d+$/.test(w));
+const vidOf = id => id && id.startsWith("yt-") ? id.slice(3) : null;
+
+function startListen(id) { L.id = id; L.secs = 0; L.tick = 0; }
+function listenTick() {
+  if (!L.id || L.id !== P.cur || eng.paused || P.loading) { L.tick = 0; return; }
+  const now = performance.now(); if (L.tick) L.secs += Math.min(1.5, (now - L.tick) / 1000); L.tick = now;
+}
+function commitListen(ended) {
+  const id = L.id; L.id = null; if (!id) return;
+  const t = tracks.get(id); if (!t) return;
+  if (!ended && L.secs < 3) return; // a tap through, not a decision
+  const dur = t.duration || eng.duration || 0;
+  const h = S.hist[id] || (S.hist[id] = { p: 0, s: 0, part: 0, l: 0 });
+  if (ended || L.secs >= Math.min(90, dur ? dur * 0.6 : 90)) h.p++;
+  else if (L.secs < 25) h.s++;
+  else h.part++;
+  h.l = Date.now();
+  if (t.kind === "yt") { h.v = t.vid; h.t = t.placeholder ? "" : t.title; h.a = t.artist; }
+  const keys = Object.keys(S.hist);
+  if (keys.length > 500) keys.sort((a, b) => S.hist[a].l - S.hist[b].l).slice(0, keys.length - 500).forEach(k => delete S.hist[k]);
+  save(); recSignal(1);
+}
+function recSignal(w) {
+  recSignals += w;
+  if (recSignals < 3) return;
+  recSignals = 0; clearTimeout(recTimer);
+  recTimer = setTimeout(() => { if (!S.recs || Date.now() - S.recs.at > 120000) recompute(false); }, 4000);
+}
+function promote(id) { const t = tracks.get(id); if (t && t.rec) { t.rec = false; delete t.why; saveYT(); } }
+
+function taste() {
+  const now = Date.now(), track = new Map(), artist = new Map(), kw = new Map(), genre = new Map();
+  const add = (m, k, v) => { if (k) m.set(k, (m.get(k) || 0) + v); };
+  const inPl = new Map();
+  S.playlists.forEach(p => { if (p.id === "pl-ders" || p.id === "pl-gece") return; p.ids.forEach(id => inPl.set(id, (inPl.get(id) || 0) + 1)); });
+  new Set([...Object.keys(S.hist), ...S.liked, ...inPl.keys()]).forEach(id => {
+    const h = S.hist[id] || {}, t = tracks.get(id);
+    const decay = h.l ? Math.pow(0.5, (now - h.l) / (21 * DAY)) : 1;
+    const sc = ((h.p || 0) + 0.3 * (h.part || 0) - 1.2 * (h.s || 0)) * decay + (isLiked(id) ? 4 : 0) + 1.5 * Math.min(3, inPl.get(id) || 0);
+    if (!sc) return;
+    track.set(id, sc);
+    if (t && t.kind === "gen") { add(genre, t.genre, sc); return; }
+    add(artist, normArtist(t ? t.artist : h.a), sc);
+    words(t ? t.title : h.t).forEach(w => add(kw, w, sc / 4));
+  });
+  return { track, artist, kw, genre };
+}
+function pickSeeds(tp) {
+  const yts = [...tp.track].filter(([id, sc]) => sc > 0.5 && vidOf(id)).sort((a, b) => b[1] - a[1]);
+  const seeds = yts.slice(0, 4), rest = yts.slice(4);
+  if (rest.length) seeds.push(rest[Math.floor(Math.random() * rest.length)]); // one exploratory seed
+  return seeds.map(([id, w]) => ({ id, vid: vidOf(id), w }));
+}
+function probeList(list) { const p = probeChain.then(() => probePlaylist(list)); probeChain = p.catch(() => {}); return p; }
+async function oembed(vid) {
+  const url = encodeURIComponent("https://www.youtube.com/watch?v=" + vid);
+  for (const ep of ["https://www.youtube.com/oembed?format=json&url=" + url, "https://noembed.com/embed?url=" + url]) {
+    try { const r = await fetch(ep); if (!r.ok) continue; const j = await r.json(); if (j.title) return { title: j.title, artist: j.author_name || "YouTube" }; } catch (e) {}
+  }
+  return null;
+}
+async function pool(items, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const it = items[i++]; try { await fn(it); } catch (e) {} } }));
+}
+function recTrack(vid, m, why) {
+  const id = "yt-" + vid;
+  if (!tracks.has(id)) { addYTRecord({ vid, title: m && m.title, artist: m && m.artist }); tracks.get(id).rec = true; }
+  const t = tracks.get(id);
+  if (t.rec && why) t.why = why;
+  return id;
+}
+function applyRecs() {
+  const r = S.recs; if (!r) return;
+  const seedName = id => (tracks.get(id) && !tracks.get(id).placeholder ? tracks.get(id).title : S.hist[id] && S.hist[id].t) || "";
+  r.items.forEach(it => { const n = seedName(it.seed); recTrack(it.vid, it, n ? `${n} dinlediğin için` : "Zevkine göre"); });
+  r.because.forEach(b => b.vids.forEach(v => recTrack(v, r.meta[v], `${b.title} dinlediğin için`)));
+}
+const foryouIds = () => (S.recs ? S.recs.items.map(it => "yt-" + it.vid) : []).filter(id => tracks.has(id) && tracks.get(id).rec && !S.hidden.includes(vidOf(id)));
+
+async function recompute(manual) {
+  if (recBusy) return;
+  const tp = taste(), seeds = pickSeeds(tp);
+  const queries = S.ytKey ? [
+    ...[...tp.artist].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([a]) => a),
+    ...[...tp.genre].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 1).map(([g]) => GENRE_QUERY[g] || g),
+    ...S.tasteGenres.map(g => GENRE_QUERY[g] || g)
+  ].filter(Boolean).slice(0, 5) : [];
+  if (!seeds.length && !queries.length) { if (manual) toast("Önce birkaç YouTube şarkısı dinle ya da beğen"); return; }
+  recBusy = true; if (view.name === "home") render(false);
+  try {
+    const cand = new Map(), meta = new Map(), because = [];
+    const bump = (vid, sc, seedId) => {
+      if (!/^[\w-]{11}$/.test(vid)) return;
+      const c = cand.get(vid) || { s: 0, by: new Map() };
+      c.s += sc; if (seedId) c.by.set(seedId, (c.by.get(seedId) || 0) + sc);
+      cand.set(vid, c);
+    };
+    const totalW = seeds.reduce((a, x) => a + x.w, 0) || 1;
+    for (const sd of seeds) {
+      try {
+        const ids = await probeList("RD" + sd.vid), row = [];
+        ids.forEach((v, i) => { if (v === sd.vid) return; bump(v, (sd.w / totalW) * (1 / (1 + 0.12 * i)), sd.id); row.push(v); });
+        because.push({ seed: sd.id, vids: row });
+      } catch (e) {}
+    }
+    for (const [qi, q] of queries.entries()) {
+      try {
+        const j = await ytApiGet("search", { part: "snippet", type: "video", videoEmbeddable: "true", videoCategoryId: "10", maxResults: 15, q });
+        j.items.forEach((it, i) => { const v = it.id && it.id.videoId; if (!v) return; bump(v, 0.5 / (1 + 0.1 * i) / (1 + 0.3 * qi)); meta.set(v, { title: decodeHTML(it.snippet.title), artist: decodeHTML(it.snippet.channelTitle) }); });
+      } catch (e) { if (manual && qi === 0) toast("YouTube araması yapılamadı: " + e.message); }
+    }
+    const known = new Set(S.hidden);
+    tracks.forEach(t => { if (t.kind === "yt" && !t.rec) known.add(t.vid); });
+    Object.entries(S.hist).forEach(([id, h]) => { if (h.p || h.s) known.add(vidOf(id)); });
+    const top = [...cand].filter(([v]) => !known.has(v)).sort((a, b) => b[1].s - a[1].s).slice(0, 45);
+    const rowVids = new Set(); because.forEach(b => b.vids.filter(v => !known.has(v)).slice(0, 10).forEach(v => rowVids.add(v)));
+    const need = [...new Set([...top.map(([v]) => v), ...rowVids])].filter(v => !meta.has(v));
+    await pool(need, 6, async v => { const m = await oembed(v); if (m) meta.set(v, m); }); // oEmbed also drops videos that can't be embedded
+    const jit = mulberry32(Math.floor(Date.now() / DAY)), dis = new Set(S.disArtists);
+    const maxA = Math.max(1, ...tp.artist.values());
+    const ok = v => meta.has(v) && !dis.has(normArtist(meta.get(v).artist)) && !JUNK.test(meta.get(v).title);
+    const scored = top.filter(([v]) => ok(v)).map(([v, c]) => {
+      const m = meta.get(v);
+      const s = c.s + 0.25 * Math.max(-1, Math.min(1, (tp.artist.get(normArtist(m.artist)) || 0) / maxA))
+        + 0.04 * Math.min(5, words(m.title).reduce((x, w) => x + Math.min(1, tp.kw.get(w) || 0), 0)) + jit() * 0.03;
+      const seed = [...c.by].sort((x, y) => y[1] - x[1])[0];
+      return { vid: v, title: m.title, artist: m.artist, s, seed: seed ? seed[0] : null };
+    }).sort((a, b) => b.s - a.s);
+    const perA = new Map(), items = [];
+    for (const r of scored) { // at most two songs per artist
+      const a = normArtist(r.artist), n = perA.get(a) || 0; if (n >= 2) continue;
+      perA.set(a, n + 1); items.push(r); if (items.length >= 30) break;
+    }
+    const seedTitle = id => (tracks.get(id) && !tracks.get(id).placeholder ? tracks.get(id).title : S.hist[id] && S.hist[id].t) || "";
+    const rows = because.map(b => ({ seed: b.seed, title: seedTitle(b.seed), vids: b.vids.filter(v => !known.has(v) && ok(v)).slice(0, 10) })).filter(b => b.title && b.vids.length >= 4).slice(0, 3);
+    const keep = {}; rows.forEach(b => b.vids.forEach(v => { keep[v] = meta.get(v); }));
+    if (items.length || rows.length) { S.recs = { at: Date.now(), items, because: rows, meta: keep }; save(); applyRecs(); }
+    else if (manual) toast("Şu an yeni öneri bulunamadı. Biraz daha dinleyip tekrar dene.");
+  } finally {
+    recBusy = false; if (view.name === "home") render(false);
+  }
+}
+
+function hideRec(id) {
+  const t = tracks.get(id), v = vidOf(id); if (!v) return;
+  if (!S.hidden.includes(v)) S.hidden.push(v);
+  if (S.hidden.length > 400) S.hidden.splice(0, S.hidden.length - 400);
+  const a = normArtist(t && t.artist);
+  if (a) { S.disCount[a] = (S.disCount[a] || 0) + 1; if (S.disCount[a] >= 2 && !S.disArtists.includes(a)) S.disArtists.push(a); }
+  if (S.recs) { S.recs.items = S.recs.items.filter(it => it.vid !== v); S.recs.because.forEach(b => { b.vids = b.vids.filter(x => x !== v); }); }
+  save(); toast(S.disArtists.includes(a) ? "Bu sanatçıyı artık önermeyeceğim" : "Bunu artık önermeyeceğim"); render(false);
+}
+
+async function startRadio() {
+  const recent = new Set(Object.entries(S.hist).filter(([, h]) => Date.now() - h.l < 6 * 3600e3).map(([id]) => id));
+  const cur = P.cur && tracks.get(P.cur);
+  const pick = list => [...new Set(list)].filter(id => tracks.has(id) && id !== P.cur && !recent.has(id) && !S.hidden.includes(vidOf(id)));
+  let ids = pick([...(S.recs ? (S.recs.because.find(b => b.seed === P.cur) || { vids: [] }).vids.map(v => "yt-" + v) : []), ...foryouIds()]);
+  if (ids.length < 3 && cur && cur.kind === "yt") {
+    try {
+      const vs = (await probeList("RD" + cur.vid)).filter(v => v !== cur.vid && !S.hidden.includes(v)).slice(0, 25);
+      vs.forEach(v => { if (!tracks.has("yt-" + v)) { recTrack(v, null, `${cur.title} radyosu`); fetchYTMeta(v); } });
+      ids = pick([...ids, ...vs.map(v => "yt-" + v)]);
+    } catch (e) {}
+  }
+  if (!ids.length) return false;
+  toast("Benzer şarkılarla devam ediliyor");
+  playContext(ids, ids[0], "rec:radio");
+  return true;
+}
+
+async function seedFromLink(str) {
+  const r = parseYT(str);
+  if (!r || !r.v) return toast("Bir YouTube şarkı bağlantısı yapıştır (watch?v=… ya da youtu.be/…)");
+  const id = addYT(r.v);
+  S.hist[id] = Object.assign(S.hist[id] || { p: 0, s: 0, part: 0 }, { p: (S.hist[id] ? S.hist[id].p : 0) + 2, l: Date.now(), v: r.v });
+  save(); toast("Eklendi, öneriler hazırlanıyor…"); render(false);
+  recompute(true);
+}
+
+const ago = ts => { const m = Math.round((Date.now() - ts) / 60000); return m < 1 ? "az önce" : m < 60 ? m + " dk önce" : m < 1440 ? Math.round(m / 60) + " sa önce" : Math.round(m / 1440) + " gün önce"; };
+function recSections() {
+  const fy = foryouIds();
+  const status = recBusy ? `<span class="rec-status"><span class="spin"></span>Öneriler hazırlanıyor…</span>` : S.recs ? `<span class="rec-status">${ago(S.recs.at)} güncellendi</span>` : "";
+  const auto = `<button class="switch${S.autoplay !== false ? " on" : ""}" data-act="rec-autoplay" aria-pressed="${S.autoplay !== false}" title="Sıra bitince benzer şarkılarla devam et"><i></i>Otomatik devam</button>`;
+  const head = `<div class="sec-head"><h2>Senin için</h2><div class="actions" style="gap:12px">${status}${auto}<button class="ghost" data-act="rec-refresh" ${recBusy ? "disabled" : ""}>Yenile</button></div></div>`;
+  const tasteChips = S.ytKey ? `<div class="chips">${TASTE_CHOICES.map(g => `<button class="chip${S.tasteGenres.includes(g) ? " on" : ""}" data-act="rec-taste" data-g="${esc(g)}">${esc(g)}</button>`).join("")}</div>` : "";
+  let html;
+  if (fy.length) {
+    html = `<section class="sec">${head}<div class="cards">${fy.slice(0, 12).map(id => card(tracks.get(id), fy, "rec:foryou", { dismiss: true })).join("")}</div>
+      ${tasteChips ? `<details><summary class="rec-status" style="cursor:pointer">Sevdiğin türler</summary><div style="margin-top:10px">${tasteChips}</div></details>` : ""}</section>`;
+  } else {
+    html = `<section class="sec">${head}<div class="onboard">
+      <p><b>Wavelet dinlediklerinden öğrenir.</b> Sonuna kadar dinlediğin, atladığın ve beğendiğin şarkılara bakıp YouTube'dan sevebileceğin şarkıları bulur. Başlamak için sevdiğin bir şarkının bağlantısını yapıştır.</p>
+      <form class="ytadd" id="recSeedForm"><input id="recSeed" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off" aria-label="Sevdiğin bir şarkının YouTube bağlantısı"><button class="solid" ${recBusy ? "disabled" : ""}>Öner</button></form>
+      ${tasteChips ? `<p>Ya da sevdiğin türleri seç:</p>${tasteChips}` : `<p>YouTube sekmesine bir API anahtarı girersen sevdiğin türlere göre de öneri yapabilir.</p>`}
+    </div></section>`;
+  }
+  if (S.recs) S.recs.because.forEach(b => {
+    const shown = new Set(fy.slice(0, 12));
+    const ids = b.vids.map(v => "yt-" + v).filter(id => tracks.has(id) && !shown.has(id) && !S.hidden.includes(vidOf(id)));
+    if (ids.length >= 4) html += `<section class="sec"><div class="sec-head"><h2>${esc(b.title)} dinlediğin için</h2></div><div class="cards">${ids.slice(0, 8).map(id => card(tracks.get(id), ids, "rec:b:" + b.seed, { dismiss: true })).join("")}</div></section>`;
+  });
+  const replay = Object.entries(S.hist).filter(([id, h]) => h.p >= 2 && tracks.has(id)).sort((a, b) => b[1].p - a[1].p).slice(0, 8).map(([id]) => id);
+  if (replay.length >= 4) html += `<section class="sec"><div class="sec-head"><h2>Tekrar dinle</h2><p>En çok dinlediklerin</p></div><div class="cards">${replay.map(id => card(tracks.get(id), replay, "rec:replay")).join("")}</div></section>`;
+  return html;
+}
+
+Object.values(S.hist).forEach(h => { if (h.v && !tracks.has("yt-" + h.v)) recTrack(h.v, h.t ? { title: h.t, artist: h.a } : null); });
+applyRecs();
+setTimeout(() => {
+  const stale = !S.recs || Date.now() - S.recs.at > 6 * 3600e3;
+  if (stale && (pickSeeds(taste()).length || (S.ytKey && S.tasteGenres.length))) recompute(false);
+}, 2500);
 
 /* ============ Boot ============ */
 if (!/BelesifyApp/.test(navigator.userAgent) && "serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
