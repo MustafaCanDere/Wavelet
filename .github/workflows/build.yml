@@ -56,8 +56,9 @@ jobs:
           name: windows
           path: desktop/dist/*.exe
 
+  # Every build of main becomes a downloadable release (v1.0.<run number>); a pushed v* tag uses its own name.
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     needs: [android, windows]
     runs-on: ubuntu-latest
     steps:
@@ -67,4 +68,12 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && format('Beleşify {0}', github.ref_name) || format('Beleşify 1.0.{0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            Windows için kurulum (`Belesify-Kurulum-*.exe`) ve taşınabilir (`Belesify-Tasinabilir-*.exe`) sürüm, Android için `Belesify.apk`.
+
+            Dosyalar imzasız. Windows uyarı verirse **Ek bilgi → Yine de çalıştır**; Android'de bilinmeyen kaynaklardan yüklemeye izin ver.
           files: out/*

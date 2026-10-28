@@ -29,7 +29,7 @@ android/   Android uygulaması (WebView). Uygulamayı https://appassets.androidp
 
 ## Derleme
 
-GitHub Actions her `main` push'unda `.exe` ve `.apk` derler (Actions sekmesinde "Artifacts"). `v` ile başlayan bir etiket (`git tag v1.0.1 && git push --tags`) dosyaları otomatik olarak bir Release'e koyar.
+GitHub Actions her `main` push'unda `.exe` ve `.apk` derler (Actions sekmesinde "Artifacts"). Her başarılı derleme dosyaları otomatik olarak yeni bir Release olarak yayınlar (`v1.0.<derleme no>`). İstersen `v` ile başlayan bir etiket de gönderebilirsin.
 
 Kendi bilgisayarında:
 
