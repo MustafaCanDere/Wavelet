@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_bg">#ff000000</color>
-    <string name="app_name">Beleşify</string>
+    <color name="ic_bg">#ff070b18</color>
+    <string name="app_name">Dalga</string>
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
-        <item name="android:colorPrimaryDark">#ff000000</item>
-        <item name="android:statusBarColor">#ff000000</item>
-        <item name="android:navigationBarColor">#ff000000</item>
+        <item name="android:colorPrimaryDark">#ff070b18</item>
+        <item name="android:statusBarColor">#ff070b18</item>
+        <item name="android:navigationBarColor">#ff070b18</item>
         <item name="android:windowBackground">@color/ic_bg</item>
-        <item name="android:colorAccent">#ff1ed760</item>
+        <item name="android:colorAccent">#ff4f8cff</item>
     </style>
 </resources>

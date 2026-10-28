@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>Beleşify</title>
-<meta name="theme-color" content="#120f17">
+<title>Dalga</title>
+<meta name="theme-color" content="#070b18">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
@@ -13,24 +13,25 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Figtree:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: three-pane music app (sidebar, library view, queue drawer) over a fixed player bar; one committed dark look */
 :root {
-  --bg: #000000;
-  --panel: #121212;
-  --card: #181818;
-  --raise: #1f1f1f;
-  --hover: #2a2a2a;
-  --line: #2c2c2c;
-  --fg: #ffffff;
-  --mute: #b3b3b3;
-  --accent: #1ed760;
-  --accent-ink: #000000;
-  --danger: #f15e6c;
-  --display: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --bg: #070b18;
+  --panel: #0e1530;
+  --card: #131c3d;
+  --raise: #18234a;
+  --hover: #213060;
+  --line: #24325f;
+  --fg: #eef3ff;
+  --mute: #98a6cf;
+  --accent: #4f8cff;
+  --accent-2: #39d5ff;
+  --accent-ink: #ffffff;
+  --danger: #ff6b81;
+  --display: "Sora", "Segoe UI", system-ui, -apple-system, sans-serif;
   --body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --r: 10px;
+  --r: 18px;
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -49,12 +50,12 @@ svg.i { width: 20px; height: 20px; fill: currentColor; flex: none; }
 /* Sidebar */
 .side { grid-row: 1; background: var(--panel); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; padding: 18px 12px 12px; gap: 18px; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; font-family: var(--display); font-weight: 900; font-size: 23px; letter-spacing: -0.04em; }
-.brand-mark { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; color: var(--accent-ink); }
+.brand-mark { width: 30px; height: 30px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: grid; place-items: center; color: var(--accent-ink); }
 .brand-mark svg { width: 18px; height: 18px; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav button { display: flex; align-items: center; gap: 14px; padding: 9px 10px; border-radius: 8px; color: var(--mute); font-weight: 600; font-size: 15px; text-align: left; }
 .nav button:hover { color: var(--fg); background: var(--raise); }
-.nav button.on { color: var(--fg); background: var(--raise); }
+.nav button.on { color: var(--fg); background: linear-gradient(90deg, rgba(79,140,255,.22), transparent); box-shadow: inset 3px 0 0 var(--accent); }
 .nav button.on svg { color: var(--accent); }
 .side-head { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 10px; color: var(--mute); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 .icon-btn { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--mute); }
@@ -64,7 +65,7 @@ svg.i { width: 20px; height: 20px; fill: currentColor; flex: none; }
 .pl-list button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; text-align: left; }
 .pl-list button:hover, .pl-list button.on { background: var(--raise); }
 .pl-list img, .pl-list .pl-ico { width: 40px; height: 40px; border-radius: 6px; flex: none; object-fit: cover; }
-.pl-ico { display: grid; place-items: center; background: linear-gradient(135deg, #450af5, #8e8ee5); }
+.pl-ico { display: grid; place-items: center; background: linear-gradient(135deg, #2f5bff, #39d5ff); }
 .pl-meta { min-width: 0; }
 .pl-meta b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-meta span { color: var(--mute); font-size: 12px; }
@@ -103,7 +104,7 @@ h2 { font-size: 22px; font-weight: 800; }
 .card:hover .fab, .card:focus-within .fab, .card.playing .fab { opacity: 1; transform: none; }
 .card b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card small { color: var(--mute); font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.fab { width: 46px; height: 46px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+.fab { width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
 .fab:hover { transform: scale(1.05); filter: brightness(1.05); }
 .fab svg { width: 22px; height: 22px; }
 
@@ -172,10 +173,10 @@ h2 { font-size: 22px; font-weight: 800; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { padding: 6px 14px; border-radius: 999px; background: var(--raise); font-weight: 600; font-size: 13px; }
 .chip:hover { background: var(--hover); }
-.chip.on { background: var(--fg); color: var(--bg); }
+.chip.on { background: var(--accent); color: var(--accent-ink); }
 
 .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 22px; text-align: center; color: var(--mute); line-height: 1.6; }
-.drop.over { border-color: var(--accent); color: var(--fg); background: rgba(30,215,96,0.08); }
+.drop.over { border-color: var(--accent); color: var(--fg); background: rgba(79,140,255,0.1); }
 .drop label { color: var(--accent); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
 /* Queue drawer */
@@ -208,14 +209,14 @@ h2 { font-size: 22px; font-weight: 800; }
 .btns .icon-btn { position: relative; }
 .btns .icon-btn.on::after { content: ""; position: absolute; bottom: 1px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent); }
 .rep1 { position: absolute; top: 3px; right: 3px; font-size: 9px; font-weight: 800; color: var(--accent); }
-.play { width: 40px; height: 40px; border-radius: 50%; background: var(--fg); color: var(--bg); display: grid; place-items: center; }
+.play { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 6px 18px rgba(79,140,255,.35); display: grid; place-items: center; }
 .play:hover { transform: scale(1.05); }
 .seek { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 600px; color: var(--mute); font-size: 12px; font-variant-numeric: tabular-nums; }
 .seek span { width: 38px; text-align: center; flex: none; }
 .right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .vol { width: 110px; }
-input[type=range] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--fg) var(--p, 0%), #4a4156 var(--p, 0%)); cursor: pointer; flex: 1; min-width: 0; margin: 0; }
-input[type=range]:hover { background: linear-gradient(to right, var(--accent) var(--p, 0%), #4a4156 var(--p, 0%)); }
+input[type=range] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--fg) var(--p, 0%), #2a3866 var(--p, 0%)); cursor: pointer; flex: 1; min-width: 0; margin: 0; }
+input[type=range]:hover { background: linear-gradient(to right, var(--accent) var(--p, 0%), #2a3866 var(--p, 0%)); }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--fg); opacity: 0; }
 input[type=range]:hover::-webkit-slider-thumb, input[type=range]:focus-visible::-webkit-slider-thumb { opacity: 1; }
 input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: var(--fg); }
@@ -239,9 +240,9 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; bord
 .modal input { background: var(--hover); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; outline: none; }
 .modal input:focus { border-color: var(--fg); }
 .modal .row-btns { display: flex; justify-content: flex-end; gap: 10px; }
-.solid { background: var(--fg); color: var(--bg); border-radius: 999px; padding: 9px 18px; font-weight: 700; }
+.solid { background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 9px 18px; font-weight: 700; }
 .solid.danger { background: var(--danger); color: var(--accent-ink); }
-.toast { position: fixed; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(10px); background: #3d6df2; color: #fff; padding: 9px 16px; border-radius: 8px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 70; max-width: calc(100vw - 32px); text-align: center; }
+.toast { position: fixed; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(10px); background: var(--raise); border: 1px solid var(--accent); color: #fff; padding: 9px 16px; border-radius: 8px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 70; max-width: calc(100vw - 32px); text-align: center; }
 .toast.show { opacity: 1; transform: translateX(-50%); }
 
 @media (max-width: 1100px) { .tl-head, .row { grid-template-columns: 30px minmax(0, 1fr) 36px 48px 36px; } .tl-head .g, .row .g { display: none; } }
@@ -326,7 +327,7 @@ img { object-fit: cover; }
 
 <div class="app" id="app">
   <aside class="side" aria-label="Kenar çubuğu">
-    <div class="brand"><span class="brand-mark"><svg class="i"><use href="#i-wave"/></svg></span>Beleşify</div>
+    <div class="brand"><span class="brand-mark"><svg class="i"><use href="#i-wave"/></svg></span>Dalga</div>
     <nav class="nav" aria-label="Ana gezinme">
       <button data-go="home"><svg class="i"><use href="#i-home"/></svg>Ana sayfa</button>
       <button data-go="search"><svg class="i"><use href="#i-search"/></svg>Ara</button>
@@ -382,7 +383,7 @@ img { object-fit: cover; }
 
 <script>
 "use strict";
-/* ============ Synth: every Beleşify Stüdyo track is composed and rendered in the browser ============ */
+/* ============ Synth: every Dalga Stüdyo track is composed and rendered in the browser ============ */
 const mulberry32 = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 const SCALES = {
@@ -1050,7 +1051,7 @@ function prev() {
   load(P.ctx[P.order[P.pos]]);
 }
 function toggle() {
-  if (!P.cur) return playContext(STUDIO.map(t => t.id), null, "Beleşify Stüdyo");
+  if (!P.cur) return playContext(STUDIO.map(t => t.id), null, "Dalga Stüdyo");
   if (P.loading) return;
   eng.paused ? eng.play().catch(() => {}) : eng.pause();
 }
@@ -1063,7 +1064,7 @@ function playOrToggle(ids, startId, name) {
 function setSession(t) {
   if (!("mediaSession" in navigator)) return;
   try {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: t.kind === "gen" ? "Beleşify Stüdyo" : "Dosyalarım", artwork: [{ src: coverOf(t), sizes: "300x300", type: "image/jpeg" }] });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: t.kind === "gen" ? "Dalga Stüdyo" : "Dosyalarım", artwork: [{ src: coverOf(t), sizes: "300x300", type: "image/jpeg" }] });
   } catch (e) {}
 }
 try {
@@ -1132,16 +1133,16 @@ function viewHome() {
   const qt = [
     `<button class="qtile" data-go="liked">${likedThumb()}<span>Beğenilen Şarkılar</span><span class="fab" data-act="play-ctx" data-ids="${S.liked.join(",")}" data-name="Beğenilen Şarkılar" role="button" aria-label="Beğenilenleri çal">${playIcon(P.ctxName === "Beğenilen Şarkılar")}</span></button>`,
     ...S.playlists.slice(0, 3).map(p => `<button class="qtile" data-go="pl:${p.id}">${plThumb(p)}<span>${esc(p.name)}</span><span class="fab" data-act="play-ctx" data-ids="${plIds(p).join(",")}" data-name="pl:${p.id}" role="button" aria-label="${esc(p.name)} çal">${playIcon(P.ctxName === "pl:" + p.id)}</span></button>`),
-    ...STUDIO.slice(0, 5 - Math.min(3, S.playlists.length)).map(t => `<button class="qtile" data-act="play-ctx" data-ids="${studioIds.join(",")}" data-start="${t.id}" data-name="Beleşify Stüdyo"><img src="${coverOf(t)}" alt=""><span>${esc(t.title)}</span><span class="fab" aria-hidden="true">${playIcon(P.cur === t.id && P.ctxName === "Beleşify Stüdyo")}</span></button>`)
+    ...STUDIO.slice(0, 5 - Math.min(3, S.playlists.length)).map(t => `<button class="qtile" data-act="play-ctx" data-ids="${studioIds.join(",")}" data-start="${t.id}" data-name="Dalga Stüdyo"><img src="${coverOf(t)}" alt=""><span>${esc(t.title)}</span><span class="fab" aria-hidden="true">${playIcon(P.cur === t.id && P.ctxName === "Dalga Stüdyo")}</span></button>`)
   ].slice(0, 6);
-  return `<div class="view tinted" style="--tint:#1d4a33">
-    <div><h1>${greeting()}</h1><p class="lede">Abonelik yok. YouTube'daki şarkıları bağlantısını yapıştırarak ekle, kendi müzik dosyalarını bırak ya da tarayıcında bestelenen Beleşify Stüdyo parçalarını dinle.</p></div>
-    ${installEvt ? `<button class="ghost" data-act="install" style="align-self:flex-start">${icon("upload")} Beleşify'ı bu cihaza kur</button>` : ""}
+  return `<div class="view tinted" style="--tint:#163a8a">
+    <div><h1>${greeting()}</h1><p class="lede">Abonelik yok. YouTube'daki şarkıları bağlantısını yapıştırarak ekle, kendi müzik dosyalarını bırak ya da tarayıcında bestelenen Dalga Stüdyo parçalarını dinle.</p></div>
+    ${installEvt ? `<button class="ghost" data-act="install" style="align-self:flex-start">${icon("upload")} Dalga'yı bu cihaza kur</button>` : ""}
     <div class="quick">${qt.join("")}</div>
     <section class="sec"><div class="sec-head"><h2>YouTube'dan</h2><button class="ghost" data-go="yt">Şarkı ekle</button></div>
       <div class="cards">${ytTrackIds().slice(0, 8).map(id => card(tracks.get(id), ytTrackIds(), "yt")).join("")}</div></section>
-    <section class="sec"><div class="sec-head"><h2>Beleşify Stüdyo'dan</h2><p>${STUDIO.length} özgün parça</p></div>
-      <div class="cards">${STUDIO.map(t => card(tracks.get(t.id), studioIds, "Beleşify Stüdyo")).join("")}</div></section>
+    <section class="sec"><div class="sec-head"><h2>Dalga Stüdyo'dan</h2><p>${STUDIO.length} özgün parça</p></div>
+      <div class="cards">${STUDIO.map(t => card(tracks.get(t.id), studioIds, "Dalga Stüdyo")).join("")}</div></section>
     <section class="sec"><div class="sec-head"><h2>Türlere göz at</h2></div>${genreGrid()}</section>
     <section class="sec"><div class="sec-head"><h2>Senin dosyaların</h2>${locals.length ? `<p>${locals.length} şarkı</p>` : ""}</div>
       ${locals.length ? `<div class="cards">${locals.slice(0, 8).map(t => card(t, locals.map(x => x.id), "Dosyalarım")).join("")}</div>` : dropZone()}</section>
@@ -1203,7 +1204,7 @@ function viewLibrary() {
     <h1>Kitaplığın</h1>
     <div class="chips">
       <button class="chip${libTab === "all" ? " on" : ""}" data-lib="all">Tümü · ${all.length}</button>
-      <button class="chip${libTab === "studio" ? " on" : ""}" data-lib="studio">Beleşify Stüdyo · ${STUDIO.length}</button>
+      <button class="chip${libTab === "studio" ? " on" : ""}" data-lib="studio">Dalga Stüdyo · ${STUDIO.length}</button>
       <button class="chip${libTab === "yt" ? " on" : ""}" data-lib="yt">YouTube · ${all.filter(t => t.kind === "yt").length}</button>
       <button class="chip${libTab === "files" ? " on" : ""}" data-lib="files">Dosyalarım · ${locals}</button>
     </div>
@@ -1473,7 +1474,7 @@ vol.addEventListener("input", () => { S.vol = vol.value / 100; eng.muted = false
 if (!/BelesifyApp/.test(navigator.userAgent) && "serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
 let installEvt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("#installBtn").hidden = false; if (view.name === "home") render(false); });
-window.addEventListener("appinstalled", () => { $("#installBtn").hidden = true; toast("Beleşify kuruldu"); });
+window.addEventListener("appinstalled", () => { $("#installBtn").hidden = true; toast("Dalga kuruldu"); });
 syncVol();
 updatePlayer();
 render();

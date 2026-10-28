@@ -1,13 +1,13 @@
 {
   "name": "belesify",
-  "productName": "Beleşify",
-  "version": "1.0.0",
-  "description": "Beleşify müzik çalar",
-  "author": "Beleşify",
+  "productName": "Dalga",
+  "version": "1.1.0",
+  "description": "Dalga müzik çalar",
+  "author": "Dalga",
   "main": "main.js",
   "build": {
     "appId": "app.belesify",
-    "productName": "Beleşify",
+    "productName": "Dalga",
     "files": [
       "main.js",
       "web/**/*"
@@ -38,11 +38,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Beleşify",
-      "artifactName": "Belesify-Kurulum-${version}.exe"
+      "shortcutName": "Dalga",
+      "artifactName": "Dalga-Kurulum-${version}.exe"
     },
     "portable": {
-      "artifactName": "Belesify-Tasinabilir-${version}.exe"
+      "artifactName": "Dalga-Tasinabilir-${version}.exe"
     }
   },
   "scripts": {
