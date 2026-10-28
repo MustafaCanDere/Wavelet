@@ -1,10 +1,10 @@
-# Dalga
+# Wavelet
 
 Ücretsiz bir müzik çalar. Windows ve Android'de uygulama olarak çalışır.
 
 - **YouTube:** Video ya da oynatma listesi bağlantısını yapıştır, YouTube'un resmi oynatıcısıyla çalsın. Video küçük bir pencerede görünür kalır (YouTube kuralları). Arama için kendi ücretsiz YouTube Data API anahtarını uygulamaya girebilirsin.
 - **Kendi dosyaların:** MP3, M4A, OGG, WAV, FLAC. Dosyalar sadece cihazında kalır.
-- **Dalga Stüdyo:** Uygulamanın içinde, kodla bestelenen 12 özgün parça (lo-fi, synthwave, house, ambient, chiptune, Hicaz makamı).
+- **Wavelet Stüdyo:** Uygulamanın içinde, kodla bestelenen 12 özgün parça (lo-fi, synthwave, house, ambient, chiptune, Hicaz makamı).
 - Çalma listeleri, beğenilenler, sıra, karıştırma, tekrar, arama.
 
 ## İndir
@@ -13,9 +13,9 @@
 
 | Dosya | Ne işe yarar |
 | --- | --- |
-| `Dalga-Kurulum-x.y.z.exe` | Windows'a kurar, masaüstüne kısayol koyar |
-| `Dalga-Tasinabilir-x.y.z.exe` | Kurmadan açılır |
-| `Dalga.apk` | Android (5.0 ve üstü) |
+| `Wavelet-Kurulum-x.y.z.exe` | Windows'a kurar, masaüstüne kısayol koyar |
+| `Wavelet-Tasinabilir-x.y.z.exe` | Kurmadan açılır |
+| `Wavelet.apk` | Android (5.0 ve üstü) |
 
 Dosyalar imzasız. Windows "bilgisayarınızı korudu" derse **Ek bilgi → Yine de çalıştır**. Android'de APK'yı açarken "bilinmeyen kaynaklardan yükleme" iznini vermen gerekir.
 
@@ -29,7 +29,7 @@ android/   Android uygulaması (WebView). Uygulamayı https://appassets.androidp
 
 ## Derleme
 
-GitHub Actions her `main` push'unda `.exe` ve `.apk` derler (Actions sekmesinde "Artifacts"). Her başarılı derleme dosyaları otomatik olarak yeni bir Release olarak yayınlar (`v1.1.<derleme no>`). İstersen `v` ile başlayan bir etiket de gönderebilirsin.
+GitHub Actions her `main` push'unda `.exe` ve `.apk` derler (Actions sekmesinde "Artifacts"). Her başarılı derleme dosyaları otomatik olarak yeni bir Release olarak yayınlar (`v1.2.<derleme no>`). İstersen `v` ile başlayan bir etiket de gönderebilirsin.
 
 Kendi bilgisayarında:
 

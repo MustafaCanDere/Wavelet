@@ -1,4 +1,4 @@
-// Dalga desktop: serves the bundled web app from 127.0.0.1 so YouTube's player gets a real http origin.
+// Wavelet desktop: serves the bundled web app from 127.0.0.1 so YouTube's player gets a real http origin.
 const { app, BrowserWindow, shell, Menu } = require("electron");
 const http = require("http");
 const fs = require("fs");
@@ -33,7 +33,7 @@ async function start() {
   Menu.setApplicationMenu(null);
   const win = new BrowserWindow({
     width: 1280, height: 820, minWidth: 380, minHeight: 560,
-    backgroundColor: "#070b18", title: "Dalga", autoHideMenuBar: true,
+    backgroundColor: "#070b18", title: "Wavelet", autoHideMenuBar: true,
     icon: path.join(ROOT, "icon-512.png"),
     webPreferences: { contextIsolation: true, sandbox: true }
   });

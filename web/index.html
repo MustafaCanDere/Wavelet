@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>Dalga</title>
+<title>Wavelet</title>
 <meta name="theme-color" content="#070b18">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -327,7 +327,7 @@ img { object-fit: cover; }
 
 <div class="app" id="app">
   <aside class="side" aria-label="Kenar çubuğu">
-    <div class="brand"><span class="brand-mark"><svg class="i"><use href="#i-wave"/></svg></span>Dalga</div>
+    <div class="brand"><span class="brand-mark"><svg class="i"><use href="#i-wave"/></svg></span>Wavelet</div>
     <nav class="nav" aria-label="Ana gezinme">
       <button data-go="home"><svg class="i"><use href="#i-home"/></svg>Ana sayfa</button>
       <button data-go="search"><svg class="i"><use href="#i-search"/></svg>Ara</button>
@@ -383,7 +383,7 @@ img { object-fit: cover; }
 
 <script>
 "use strict";
-/* ============ Synth: every Dalga Stüdyo track is composed and rendered in the browser ============ */
+/* ============ Synth: every Wavelet Stüdyo track is composed and rendered in the browser ============ */
 const mulberry32 = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 const SCALES = {
@@ -1051,7 +1051,7 @@ function prev() {
   load(P.ctx[P.order[P.pos]]);
 }
 function toggle() {
-  if (!P.cur) return playContext(STUDIO.map(t => t.id), null, "Dalga Stüdyo");
+  if (!P.cur) return playContext(STUDIO.map(t => t.id), null, "Wavelet Stüdyo");
   if (P.loading) return;
   eng.paused ? eng.play().catch(() => {}) : eng.pause();
 }
@@ -1064,7 +1064,7 @@ function playOrToggle(ids, startId, name) {
 function setSession(t) {
   if (!("mediaSession" in navigator)) return;
   try {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: t.kind === "gen" ? "Dalga Stüdyo" : "Dosyalarım", artwork: [{ src: coverOf(t), sizes: "300x300", type: "image/jpeg" }] });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: t.kind === "gen" ? "Wavelet Stüdyo" : "Dosyalarım", artwork: [{ src: coverOf(t), sizes: "300x300", type: "image/jpeg" }] });
   } catch (e) {}
 }
 try {
@@ -1133,16 +1133,16 @@ function viewHome() {
   const qt = [
     `<button class="qtile" data-go="liked">${likedThumb()}<span>Beğenilen Şarkılar</span><span class="fab" data-act="play-ctx" data-ids="${S.liked.join(",")}" data-name="Beğenilen Şarkılar" role="button" aria-label="Beğenilenleri çal">${playIcon(P.ctxName === "Beğenilen Şarkılar")}</span></button>`,
     ...S.playlists.slice(0, 3).map(p => `<button class="qtile" data-go="pl:${p.id}">${plThumb(p)}<span>${esc(p.name)}</span><span class="fab" data-act="play-ctx" data-ids="${plIds(p).join(",")}" data-name="pl:${p.id}" role="button" aria-label="${esc(p.name)} çal">${playIcon(P.ctxName === "pl:" + p.id)}</span></button>`),
-    ...STUDIO.slice(0, 5 - Math.min(3, S.playlists.length)).map(t => `<button class="qtile" data-act="play-ctx" data-ids="${studioIds.join(",")}" data-start="${t.id}" data-name="Dalga Stüdyo"><img src="${coverOf(t)}" alt=""><span>${esc(t.title)}</span><span class="fab" aria-hidden="true">${playIcon(P.cur === t.id && P.ctxName === "Dalga Stüdyo")}</span></button>`)
+    ...STUDIO.slice(0, 5 - Math.min(3, S.playlists.length)).map(t => `<button class="qtile" data-act="play-ctx" data-ids="${studioIds.join(",")}" data-start="${t.id}" data-name="Wavelet Stüdyo"><img src="${coverOf(t)}" alt=""><span>${esc(t.title)}</span><span class="fab" aria-hidden="true">${playIcon(P.cur === t.id && P.ctxName === "Wavelet Stüdyo")}</span></button>`)
   ].slice(0, 6);
   return `<div class="view tinted" style="--tint:#163a8a">
-    <div><h1>${greeting()}</h1><p class="lede">Abonelik yok. YouTube'daki şarkıları bağlantısını yapıştırarak ekle, kendi müzik dosyalarını bırak ya da tarayıcında bestelenen Dalga Stüdyo parçalarını dinle.</p></div>
-    ${installEvt ? `<button class="ghost" data-act="install" style="align-self:flex-start">${icon("upload")} Dalga'yı bu cihaza kur</button>` : ""}
+    <div><h1>${greeting()}</h1><p class="lede">Abonelik yok. YouTube'daki şarkıları bağlantısını yapıştırarak ekle, kendi müzik dosyalarını bırak ya da tarayıcında bestelenen Wavelet Stüdyo parçalarını dinle.</p></div>
+    ${installEvt ? `<button class="ghost" data-act="install" style="align-self:flex-start">${icon("upload")} Wavelet'i bu cihaza kur</button>` : ""}
     <div class="quick">${qt.join("")}</div>
     <section class="sec"><div class="sec-head"><h2>YouTube'dan</h2><button class="ghost" data-go="yt">Şarkı ekle</button></div>
       <div class="cards">${ytTrackIds().slice(0, 8).map(id => card(tracks.get(id), ytTrackIds(), "yt")).join("")}</div></section>
-    <section class="sec"><div class="sec-head"><h2>Dalga Stüdyo'dan</h2><p>${STUDIO.length} özgün parça</p></div>
-      <div class="cards">${STUDIO.map(t => card(tracks.get(t.id), studioIds, "Dalga Stüdyo")).join("")}</div></section>
+    <section class="sec"><div class="sec-head"><h2>Wavelet Stüdyo'dan</h2><p>${STUDIO.length} özgün parça</p></div>
+      <div class="cards">${STUDIO.map(t => card(tracks.get(t.id), studioIds, "Wavelet Stüdyo")).join("")}</div></section>
     <section class="sec"><div class="sec-head"><h2>Türlere göz at</h2></div>${genreGrid()}</section>
     <section class="sec"><div class="sec-head"><h2>Senin dosyaların</h2>${locals.length ? `<p>${locals.length} şarkı</p>` : ""}</div>
       ${locals.length ? `<div class="cards">${locals.slice(0, 8).map(t => card(t, locals.map(x => x.id), "Dosyalarım")).join("")}</div>` : dropZone()}</section>
@@ -1204,7 +1204,7 @@ function viewLibrary() {
     <h1>Kitaplığın</h1>
     <div class="chips">
       <button class="chip${libTab === "all" ? " on" : ""}" data-lib="all">Tümü · ${all.length}</button>
-      <button class="chip${libTab === "studio" ? " on" : ""}" data-lib="studio">Dalga Stüdyo · ${STUDIO.length}</button>
+      <button class="chip${libTab === "studio" ? " on" : ""}" data-lib="studio">Wavelet Stüdyo · ${STUDIO.length}</button>
       <button class="chip${libTab === "yt" ? " on" : ""}" data-lib="yt">YouTube · ${all.filter(t => t.kind === "yt").length}</button>
       <button class="chip${libTab === "files" ? " on" : ""}" data-lib="files">Dosyalarım · ${locals}</button>
     </div>
@@ -1474,7 +1474,7 @@ vol.addEventListener("input", () => { S.vol = vol.value / 100; eng.muted = false
 if (!/BelesifyApp/.test(navigator.userAgent) && "serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
 let installEvt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("#installBtn").hidden = false; if (view.name === "home") render(false); });
-window.addEventListener("appinstalled", () => { $("#installBtn").hidden = true; toast("Dalga kuruldu"); });
+window.addEventListener("appinstalled", () => { $("#installBtn").hidden = true; toast("Wavelet kuruldu"); });
 syncVol();
 updatePlayer();
 render();

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_bg">#ff070b18</color>
-    <string name="app_name">Dalga</string>
+    <string name="app_name">Wavelet</string>
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:colorPrimaryDark">#ff070b18</item>
         <item name="android:statusBarColor">#ff070b18</item>
