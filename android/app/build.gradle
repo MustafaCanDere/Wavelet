@@ -2,6 +2,10 @@ plugins {
     id "com.android.application"
 }
 
+// CI'daki calisma numarasi surum olur; GitHub surum etiketi (v1.3.N) ile ayni kalir,
+// boylece uygulama ici guncelleme yeni surumu taniyabilir.
+def runNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "4") as Integer
+
 android {
     namespace "app.belesify"
     compileSdk 34
@@ -10,8 +14,8 @@ android {
         applicationId "app.belesify"
         minSdk 21
         targetSdk 34
-        versionCode 4
-        versionName "1.3.0"
+        versionCode runNumber
+        versionName "1.3." + runNumber
     }
 
     signingConfigs {
