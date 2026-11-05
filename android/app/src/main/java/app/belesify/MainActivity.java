@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new Chrome());
         setContentView(web);
         if (state == null || web.restoreState(state) == null) web.loadUrl("https://" + HOST + "/index.html");
+        Updater.checkOnStart(this);
     }
 
     @Override
